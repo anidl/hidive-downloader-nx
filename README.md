@@ -76,7 +76,7 @@ After installing NodeJS with NPM goto directory with `package.json` file and typ
 
 ## CLI Examples
 
-* `node funi --search "K-ON"` search "K-ON" in title
-* `node funi -s 125 -e s01e001,s01e002` download episodes s01e001-s01e002 from show with id 125
-* `node funi -s 337 -e 2011120301` download episode 2011120301 from show with id 337
+* `node hidive --search "K-ON"` search "K-ON" in title
+* `node hidive -s 125 -e s01e001,s01e002` download episodes s01e001-s01e002 from show with id 125
+* `node hidive -s 337 -e 2011120301` download episode 2011120301 from show with id 337
 `[note] movies and ovas have episode number as air date`
