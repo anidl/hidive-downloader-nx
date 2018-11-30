@@ -23,7 +23,7 @@ To change these paths you need to edit `config.main.yml` in `./modules/` directo
 
 ### Node Modules
 
-After installing NodeJS with NPM goto directory with `package.json` file and type: `npm i`.
+After installing NodeJS with NPM go to directory with `package.json` file and type: `npm i`.
 * [check dependencies](https://david-dm.org/seiya-dev/hidive-downloader-nx)
 
 ## CLI Options
@@ -79,4 +79,5 @@ After installing NodeJS with NPM goto directory with `package.json` file and typ
 * `node hidive --search "K-ON"` search "K-ON" in title
 * `node hidive -s 125 -e s01e001,s01e002` download episodes s01e001-s01e002 from show with id 125
 * `node hidive -s 337 -e 2011120301` download episode 2011120301 from show with id 337
+
 `[note] movies and ovas have episode number as air date`
