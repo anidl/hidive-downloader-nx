@@ -1,4 +1,4 @@
-#HIDIVE Downloader NX configuration v1
+#HIDIVE Downloader NX configuration v1.1
 bin:
   ffmpeg: ${__dirname}/modules/ffmpeg
   mkvmerge: ${__dirname}/modules/mkvtoolnix/mkvmerge
@@ -7,6 +7,7 @@ dir:
   trash: ${__dirname}/videos/_trash/
 cli:
   releaseGroup: HIDIVE
+  assTitleTag: false
   fileSuffix: SIZEp
   videoQuality: 720p
   dubLanguage: eng

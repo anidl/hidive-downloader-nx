@@ -37,7 +37,6 @@ const shlp = require('sei-helper');
 const yargs = require('yargs');
 const request = require('request');
 const agent = require('socks5-https-client/lib/Agent');
-const dateFormat = require('dateformat');
 const vtt = require(path.join(__dirname,'modules','module.vttconvert'));
 
 // m3u8
@@ -161,6 +160,8 @@ let argv = yargs
     .default('suffix',cfg.cli.fileSuffix)
     
     // util
+    .describe('stag','Subtitles file: Custom title tag')
+    .default('stag',cfg.cli.assTitleTag)
     .describe('nocleanup','Move temporary files to trash folder instead of deleting')
     .boolean('nocleanup')
     .default('nocleanup',cfg.cli.noCleanUp)
@@ -228,8 +229,9 @@ async function doAuth(){
     const iPsswd = await shlp.question(`PASSWORD   `);
     const auth = await getData('Authenticate', JSON.stringify({"Email":iLogin,"Password":iPsswd}));
     if(checkRes(auth)){return;}
-    profile.userId    = JSON.parse(auth.res.body).Data.User.Id;
-    profile.profileId = JSON.parse(auth.res.body).Data.Profiles[0].Id;
+    const authData = JSON.parse(auth.res.body).Data;
+    profile.userId    = authData.User.Id;
+    profile.profileId = authData.Profiles[0].Id;
     fs.writeFileSync(profileFile,yaml.stringify(profile));
     console.log(`[INFO] Auth complete!`);
     console.log(`[INFO] Service level for "${iLogin}" is ${JSON.parse(auth.res.body).Data.User.ServiceLevel}`);
@@ -291,8 +293,7 @@ async function getShow(){
                 console.log(`Videos: `+videoList.join('\n\t'));
                 console.log(`Subs  : `+subsList.join('\n\t'));
                 // console.log(videoData);
-                let videoUrls = videoData.Data.VideoUrls;
-                let videoUrl  = ``;
+                let videoUrls = videoData.Data.VideoUrls, videoUrl  = ``;
                 let subsUrls  = videoData.Data.CaptionVttUrls;
                 fontSize = videoData.Data.FontSize ? videoData.Data.FontSize : fontSize;
                 let videoSel  = videoList.filter( v => v.match(langCode[argv.dub]) );
@@ -349,7 +350,7 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
         let chunkList = m3u8(reqVid.res.body);
         chunkList.baseUrl = tsDlPath.split('/').slice(0, -1).join('/')+'/';
         fnSuffix = argv.suffix.replace('SIZEp',argv.q);
-        fnOutput = shlp.cleanupFilename(`[${argv.a}] ${fnTitle} - ${fnEpNum} [${fnSuffix}]`);;
+        fnOutput = shlp.cleanupFilename(`[${argv.a}] ${fnTitle} - ${fnEpNum} [${fnSuffix}]`);
         
         let subsMargin = 0;
         if(chunkList.segments[0].uri.match(/\/bumpers\//)){
@@ -380,7 +381,8 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
         }
         console.log(`[INFO] Video downloaded!\n`);
         // subs download
-        argv.a = shlp.cleanupFilename(argv.a);
+        argv.stag = argv.stag ? argv.stag : argv.a
+        argv.stag = shlp.cleanupFilename(argv.stag);
         let subsLangArr = Object.keys(subsUrls);
         sxList = [];
         argv.nosubs = argv.dub == 'jpn' ? false : argv.nosubs;
@@ -395,7 +397,7 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
                 if(!checkRes(getCssContent) && !checkRes(getVttContent)){
                     cssStr = getCssContent.res.body;
                     vttStr = getVttContent.res.body;
-                    srtStr = vtt(argv.a,fontSize,vttStr,cssStr,subsMargin);
+                    srtStr = vtt(argv.stag,fontSize,vttStr,cssStr,subsMargin);
                     let subFn = `${fnOutput}.${subsLangArr[z]}.ass`;
                     fs.writeFileSync(subFn, srtStr,'utf8');
                     sxList.push({
@@ -527,7 +529,14 @@ function checkRes(r){
 
 // Generate Nonce
 function generateNonce(){
-    const nonceDate     = dateFormat(new Date(), "UTC:yymmddHHMM");
+    const initDate      = new Date();
+    const nonceDate     = [
+        initDate.getUTCFullYear().toString().slice(-2),
+        ('0'+(initDate.getUTCMonth()+1)).slice(-2),
+        ('0'+initDate.getUTCDate()).slice(-2),
+        ('0'+initDate.getUTCHours()).slice(-2),
+        ('0'+initDate.getUTCMinutes()).slice(-2)
+    ].join(''); // => "UTC:yymmddHHMM"
     const nonceCleanStr = nonceDate + API_KEY;
     const nonceHash     = crypto.createHash('sha256').update(nonceCleanStr).digest('hex');
     return nonceHash;

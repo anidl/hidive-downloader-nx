@@ -67,6 +67,7 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 
 ### Utility
 
+* `--stag` custom title in subtitles file (override `-a` option)
 * `--nocleanup` move unnecessary files to trash folder after completion instead of deleting
 * `-h`, `--help` show all options
 
