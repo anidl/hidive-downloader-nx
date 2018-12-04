@@ -256,7 +256,10 @@ function convertLine(css, l) {
         txt.text = `{\\pos(640,${parseFloat(PosY.toFixed(3))})}${txt.text}`;
     }
     else {
-        ind = txt.style.match(/(.*)_\d+/)[1];
+        indregx = txt.style.match(/(.*)_\d+/);
+        if(indregx !== null){
+            ind = indregx[1];
+        }
     }
 
     let style = css.map[txt.style] || 'Default';
@@ -265,23 +268,25 @@ function convertLine(css, l) {
 }
 
 function convertText(text) {
-    let m = text.match(/<c.([^>]*)>(.*)<\/c>/);
+    let m = text.match(/<c.([^>]*)>([.\S\s]*)<\/c>/);
     let style = '';
     if (m) {
         style = m[1];
         text = m[2];
     }
 
-    text = text
+    xtext = text
         .replace(/\n/g, '\\N')
+        .replace(/ \\N$/g, '\\N')
         .replace(/<b[^>]*>([^<]*)<\/b>/g, '{\\b1}$1{\\b0}')
         .replace(/<i[^>]*>([^<]*)<\/i>/g, '{\\i1}$1{\\i0}')
         .replace(/<u[^>]*>([^<]*)<\/u>/g, '{\\u1}$1{\\u0}')
         // .replace(/<c[^>]*>[^<]*<\/c>/g, '')
         // .replace(/<ruby[^>]*>[^<]*<\/ruby>/g, '')
-        .replace(/<[^>]>/g, '');
+        .replace(/<[^>]>/g, '')
+        .replace(/\\N$/, '');
 
-    return { style, text };
+    return { style, xtext };
 }
 
 function convertTime(tm) {

@@ -388,27 +388,27 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
         argv.nosubs = argv.dub == 'jpn' ? false : argv.nosubs;
         if(!argv.nosubs && subsLangArr.length > 0){
             for(let z=0; z<subsLangArr.length; z++){
-                let vttStr = '', cssStr = '', srtStr = '';
+                let vttStr = '', cssStr = '', assStr = '', assExt = 'ass';
                 let subs4XUrl = subsUrls[subsLangArr[z]].split('/');
                 subsXUrl = getSubsUrl(subs4XUrl[subs4XUrl.length-1].replace(/.vtt$/,''));
-                // console.log(subsXUrl);
                 let getCssContent = await getData('!g!'+subsXUrl.css, '');
                 let getVttContent = await getData('!g!'+subsXUrl.vtt, '');
                 if(!checkRes(getCssContent) && !checkRes(getVttContent)){
+                    let subFn = `${fnOutput}.${subsLangArr[z]}`;
                     cssStr = getCssContent.res.body;
                     vttStr = getVttContent.res.body;
-                    srtStr = vtt(argv.stag,fontSize,vttStr,cssStr,subsMargin);
-                    let subFn = `${fnOutput}.${subsLangArr[z]}.ass`;
-                    fs.writeFileSync(subFn, srtStr,'utf8');
+                    assStr = vtt(argv.stag,fontSize,vttStr,cssStr,subsMargin);
+                    fs.writeFileSync(`${subFn}.${assExt}`, assStr,'utf8');
                     sxList.push({
-                        file: subFn,
+                        file: `${subFn}.${assExt}`,
                         language: subsLangArr[z],
                         langCode: getLangCode(subsLangArr[z])
                     });
-                    console.log(`[INFO] Subtitle downloaded and converted: ${subFn}`);
+                    console.log(`[INFO] Subtitle downloaded and converted: ${subFn}.${assExt}`);
                 }
             }
         }
+        // go to muxing
         await muxStreams();
     }
 }
