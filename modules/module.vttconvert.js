@@ -268,7 +268,7 @@ function convertLine(css, l) {
 }
 
 function convertText(text) {
-    let m = text.match(/<c.([^>]*)>([.\S\s]*)<\/c>/);
+    let m = text.match(/<c\.([^>]*)>([\S\s]*)<\/c>/);
     let style = '';
     if (m) {
         style = m[1];

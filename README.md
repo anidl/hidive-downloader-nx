@@ -38,7 +38,7 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 
 ### Download Video
 
-* `-s <i> -e <s>` sets the show id and episode ids (comma-separated)
+* `-s <i> -e <s>` sets the show id and episode ids (comma-separated, hyphen-sequence)
 * `-q <i>` sets the video quality [360p, 480p, 720p, 1080p]
 * `--dub` select dub language [eng, jpn, ...] (eng dub by default)
 * `--br` force download broadcast version
@@ -78,7 +78,8 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 ## CLI Examples
 
 * `node hidive --search "K-ON"` search "K-ON" in title
-* `node hidive -s 125 -e s01e001,s01e002` download episodes s01e001-s01e002 from show with id 125
+* `node hidive -s 125 -e s01e001,s01e002` download episodes s01e001 and s01e002 from show with id 125
 * `node hidive -s 337 -e 2011120301` download episode 2011120301 from show with id 337
+* `node hidive -s 125 -e s01e003-005,2011120301` download episodes s01e003-005 and 2011120301 from show with id 125
 
 `[note] movies and ovas have episode number as air date`

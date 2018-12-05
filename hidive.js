@@ -4,10 +4,10 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 // package json
-const packageJson = require(path.join(__dirname,'package.json'));
+const pkg = require('./package');
 
 // program name
-console.log(`\n=== HIDIVE Downloader NX ${packageJson.version} ===\n`);
+console.log(`\n=== HIDIVE Downloader NX ${pkg.version} ===\n`);
 const modulesFolder = path.join(__dirname,'modules');
 
 // api const
@@ -72,17 +72,17 @@ if(fs.existsSync(profileFile)){
 
 // langs
 const langCode = {
-    'jpn': 'Japanese',
-    'eng': 'English',
-    'spa': 'Spanish',
-    'spa-eu': 'Spanish',
-    'spa-la': 'Spanish LatAm',
-    'fre': 'French',
-    'ger': 'German',
-    'kor': 'Korean',
-    'por': 'Portuguese',
-    'tur': 'Turkish',
-    'ita': 'Italian'
+    'jpn': 'Japanese', // ja: Japanese
+    'eng': 'English', // en: English
+    'spa': 'Spanish', // sp: Spanish
+    'spa-eu': 'Spanish', // es: European Spanish
+    'spa-la': 'Spanish LatAm', // sp: Latin American Spanish
+    'fre': 'French', // fr: French
+    'ger': 'German', // de: German
+    'kor': 'Korean', // ko: Korean
+    'por': 'Portuguese', // pt: Portuguese
+    'tur': 'Turkish', // tr: Turkish
+    'ita': 'Italian', // it: Italian
 };
 
 function getLangCode(lang){
@@ -94,18 +94,6 @@ function getLangCode(lang){
     }
     return 'unk';
 }
-
-/*
-<option value="ja">Japanese</option>
-<option value="sp">Latin American Spanish</option>
-<option value="es">European Spanish</option>
-<option value="pt">Portuguese</option>
-<option value="de">German</option>
-<option value="fr">French</option>
-<option value="ko">Korean</option>
-<option value="tr">Turkish</option>
-<option value="it">Italian</option>
-*/
 
 // cli
 let argv = yargs
@@ -121,7 +109,7 @@ let argv = yargs
     
     // params
     .describe('s','Sets the show id')
-    .describe('e','Select episode ids (comma-separated)')
+    .describe('e','Select episode ids (comma-separated, hyphen-sequence)')
     
     .describe('q','Video quality')
     .choices('q', ['360p','480p','720p','1080p'])
@@ -234,7 +222,7 @@ async function doAuth(){
     profile.profileId = authData.Profiles[0].Id;
     fs.writeFileSync(profileFile,yaml.stringify(profile));
     console.log(`[INFO] Auth complete!`);
-    console.log(`[INFO] Service level for "${iLogin}" is ${JSON.parse(auth.res.body).Data.User.ServiceLevel}`);
+    console.log(`[INFO] Service level for "${iLogin}" is ${authData.User.ServiceLevel}`);
 }
 
 // Search
@@ -250,7 +238,7 @@ async function doSearch(){
         }
     }
     else{
-        console.log(`[ERROR] Nothing found!`)
+        console.log(`[ERROR] Nothing found!`);
     }
 }
 
@@ -262,7 +250,29 @@ async function getShow(){
     if(checkRes(getShowData)){return;}
     const showData = JSON.parse(getShowData.res.body).Data.Title;
     console.log(`[#${showData.Id}] ${showData.Name} [${showData.ShowInfoTitle}]`);
-    let selEpsInp = argv.e ? argv.e.toString().split(',') : [];
+    // build inputed episodes
+    let selEpsInp = argv.e ? argv.e.toString().split(',') : [], selEpsInpRanges = [];
+    selEpsInp = selEpsInp.map((e)=>{
+        if(e.match('-')){
+            let eRegx = e.split('-');
+            if( eRegx.length == 2 && eRegx[0].match(/^s\d{2}e\d{3}$/i) && eRegx[1].match(/^\d{3}$/) ){
+                eSplitNum = eRegx[0].split('e');
+                eFirstNum = parseInt(eSplitNum[1]);
+                eLastNum = parseInt(eRegx[1]);
+                if(eFirstNum < eLastNum){
+                    for(let i=eFirstNum;i<eLastNum+1;i++){
+                        selEpsInpRanges.push(eSplitNum[0]+'e'+(('00'+i).slice(-3)));
+                    }
+                    return '';
+                }
+                else{ return eRegx[0].toLowerCase(); }
+            }
+            else{ return e.toLowerCase(); }
+        }
+        else{ return e.toLowerCase(); }
+    });
+    selEpsInp = [...new Set(selEpsInp.concat(selEpsInpRanges))];
+    // build selected episodes
     let selEpsArr = [];
     for(let i=0;i<showData.Episodes.length;i++){
         let epKey = showData.Episodes[i].VideoKey;
@@ -274,6 +284,7 @@ async function getShow(){
         console.log(`[${epKey}] ${showData.Episodes[i].Name}`+(selMark?' (selected)':''));
     }
     console.log();
+    // select episodes
     if(selEpsArr.length>0){
         for(let s=0;s<selEpsArr.length;s++){
             let getVideoData = await getData('GetVideos', JSON.stringify({"VideoKey":selEpsArr[s],"TitleId":argv.s}));
@@ -283,16 +294,16 @@ async function getShow(){
                 let showTitle = ssNum > 1 ? `${showData.Name} S${ssNum}` : showData.Name;
                 let epNum = selEpsArr[s].match(/e(\d+)$/) ? ('0'+selEpsArr[s].match(/e(\d+)$/)[1]).slice(-2) : selEpsArr[s];
                 console.log(`[INFO] ${showTitle} - ${epNum}`);
-                console.log(`[INFO] Selected dub: ${langCode[argv.dub]}`);
                 // set customs
                 fnTitle = argv.title ? argv.title : showTitle;
                 fnEpNum = selEpsArr.length < 2 && argv.ep ? argv.ep : epNum;
                 // --
                 let videoList = videoData.Data.VideoLanguages;
                 let subsList  = videoData.Data.CaptionLanguages;
-                console.log(`Videos: `+videoList.join('\n\t'));
-                console.log(`Subs  : `+subsList.join('\n\t'));
-                // console.log(videoData);
+                console.log(`[INFO] Available dubs and subtitles:`);
+                console.log(`\tVideos: `+videoList.join('\n\t\t'));
+                console.log(`\tSubs  : `+subsList.join('\n\t\t'));
+                console.log(`[INFO] Selected dub: ${langCode[argv.dub]}`);
                 let videoUrls = videoData.Data.VideoUrls, videoUrl  = ``;
                 let subsUrls  = videoData.Data.CaptionVttUrls;
                 fontSize = videoData.Data.FontSize ? videoData.Data.FontSize : fontSize;
@@ -302,18 +313,18 @@ async function getShow(){
                 }
                 else if(videoSel.length===1){
                     videoUrl = videoUrls[videoSel[0]].hls[0];
-                    console.log(`[INFO] Downloading "${videoSel[0].split(',')[1].trim()}"`);
+                    console.log(`[INFO] Selected release: ${videoSel[0].split(',')[1].trim()}`);
                     await downloadMedia(videoUrl,subsUrls,videoData.Data.FontSize);
                 }
                 else if(videoSel.length===2){
                     if(argv.br){
                         videoUrl = videoUrls[videoSel.filter(v=>v.match(/Broadcast/))[0]].hls[0];
-                        console.log(`[INFO] Downloading "Broadcast"`);
+                        console.log(`[INFO] Selected release: Broadcast`);
                         await downloadMedia(videoUrl,subsUrls,videoData.Data.FontSize);
                     }
                     else{
                         videoUrl = videoUrls[videoSel.filter(v=>v.match(/Home Video/))[0]].hls[0];
-                        console.log(`[INFO] Downloading "Home Video"`);
+                        console.log(`[INFO] Selected release: Home Video`);
                         await downloadMedia(videoUrl,subsUrls,videoData.Data.FontSize);
                     }
                 }
@@ -331,16 +342,18 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
     if(checkRes(getVideoQualities)){}
     let s = m3u8(getVideoQualities.res.body).playlists;
     let pls = {};
+    console.log(`[INFO] Available qualities:`);
     for(let i=0;i<s.length;i++){
         let qs = s[i].attributes.RESOLUTION.height+'p';
         let qb = Math.round(s[i].attributes.BANDWIDTH/1024);
-        console.log(`[quality] ${qs} @ ${qb}kbps`+(qs==argv.q?` (selected)`:``));
+        console.log(`\t${qs} @ ${qb}kbps`+(qs==argv.q?` (selected)`:``));
         if(qs==argv.q){
             tsDlPath = s[i].uri;
         }
     }
+    console.log();
     if(!tsDlPath){
-        console.log(`[ERROR] Selected video quality not found!\n`)
+        console.log(`\n[ERROR] Selected video quality not found!\n`)
     }
     else{
         // video download

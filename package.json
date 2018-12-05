@@ -1,6 +1,6 @@
 {
     "name": "hidive-downloader-nx",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "description": "Download videos from HIDIVE via cli.",
     "keywords": [
         "download",
