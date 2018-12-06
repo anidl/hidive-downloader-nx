@@ -274,7 +274,7 @@ function convertText(text) {
         style = m[1];
         text = m[2];
     }
-
+    
     xtext = text
         .replace(/\n/g, '\\N')
         .replace(/ \\N$/g, '\\N')
@@ -285,8 +285,9 @@ function convertText(text) {
         // .replace(/<ruby[^>]*>[^<]*<\/ruby>/g, '')
         .replace(/<[^>]>/g, '')
         .replace(/\\N$/, '');
-
-    return { style, xtext };
+    
+    text = xtext;
+    return { style, text };
 }
 
 function convertTime(tm) {

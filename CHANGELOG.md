@@ -1,5 +1,8 @@
 ## Change Log
 
+### 1.2.1 (2018/12/06)
+- Fix broken subtitles parsing
+
 ### 1.2.0 (2018/12/05)
 - Select episodes by hyphen-sequence
 
