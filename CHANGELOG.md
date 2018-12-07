@@ -1,5 +1,9 @@
 ## Change Log
 
+### 1.3.0 (2018/12/07)
+- Improve episode selection and file naming
+- `hls-download` configuration changed, split download to 10 pieces instead of 5
+
 ### 1.2.1 (2018/12/06)
 - Fix broken subtitles parsing
 

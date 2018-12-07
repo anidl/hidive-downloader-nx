@@ -249,19 +249,33 @@ async function getShow(){
     const getShowData = await getData('GetTitle', JSON.stringify({"Id":argv.s}));
     if(checkRes(getShowData)){return;}
     const showData = JSON.parse(getShowData.res.body).Data.Title;
+    // console.log(yaml.stringify(showData));
     console.log(`[#${showData.Id}] ${showData.Name} [${showData.ShowInfoTitle}]`);
     // build inputed episodes
     let selEpsInp = argv.e ? argv.e.toString().split(',') : [], selEpsInpRanges = [];
     selEpsInp = selEpsInp.map((e)=>{
         if(e.match('-')){
             let eRegx = e.split('-');
+            let eSplitNum, eFirstNum, eLastNum;
             if( eRegx.length == 2 && eRegx[0].match(/^s\d{2}e\d{3}$/i) && eRegx[1].match(/^\d{3}$/) ){
                 eSplitNum = eRegx[0].split('e');
                 eFirstNum = parseInt(eSplitNum[1]);
                 eLastNum = parseInt(eRegx[1]);
                 if(eFirstNum < eLastNum){
                     for(let i=eFirstNum;i<eLastNum+1;i++){
-                        selEpsInpRanges.push(eSplitNum[0]+'e'+(('00'+i).slice(-3)));
+                        selEpsInpRanges.push(eSplitNum[0]+'e'+(('00'+i).slice(-3)).toLowerCase());
+                    }
+                    return '';
+                }
+                else{ return eRegx[0].toLowerCase(); }
+            }
+            else if( eRegx.length == 2 && eRegx[0].match(/^(ova|movie)(\d\d?)$/i) && eRegx[1].match(/^\d{2}$/)){
+                eSplitNum = eRegx[0].match(/^(ova|movie)(\d\d?)$/i);
+                eFirstNum = parseInt(eSplitNum[2]);
+                eLastNum = parseInt(eRegx[1]);
+                if(eFirstNum < eLastNum){
+                    for(let i=eFirstNum;i<eLastNum+1;i++){
+                        selEpsInpRanges.push(eSplitNum[1]+(('0'+i).slice(-2)).toLowerCase());
                     }
                     return '';
                 }
@@ -272,27 +286,46 @@ async function getShow(){
         else{ return e.toLowerCase(); }
     });
     selEpsInp = [...new Set(selEpsInp.concat(selEpsInpRanges))];
+    // console.log(selEpsInp);
     // build selected episodes
-    let selEpsArr = [];
+    let selEpsArr = []; let ovaSeq = 1; let movieSeq = 1;
     for(let i=0;i<showData.Episodes.length;i++){
+        let titleId = showData.Episodes[i].TitleId;
         let epKey = showData.Episodes[i].VideoKey;
-        let selMark = false;
-        if(selEpsInp.includes(epKey)){
-            selEpsArr.push(epKey);
-            selMark = true;
+        let nameLong = showData.Episodes[i].DisplayNameLong;
+        if(nameLong.match(/OVA/i)){
+            nameLong = 'ova'+(('0'+ovaSeq).slice(-2)); ovaSeq++;
         }
-        console.log(`[${epKey}] ${showData.Episodes[i].Name}`+(selMark?' (selected)':''));
+        else if(nameLong.match(/Theatrical/i)){
+            nameLong = 'movie'+(('0'+movieSeq).slice(-2)); movieSeq++;
+        }
+        else{
+            nameLong = epKey;
+        }
+        let sumDub = showData.Episodes[i].Summary.match(/^Audio: (.*)/m);
+        sumDub = sumDub ? `\n - ${sumDub[0]}` : ``;
+        let sumSub = showData.Episodes[i].Summary.match(/^Subtitles: (.*)/m);
+        sumSub = sumSub ? `\n - ${sumSub[0]}` : ``;
+        let selMark = '';
+        if(selEpsInp.includes(epKey) || !epKey.match(/e(\d+)$/) && selEpsInp.includes(nameLong)){
+            selEpsArr.push({titleId,epKey,nameLong});
+            selMark = ' (selected)';
+        }
+        let epKeyTitle   = !epKey.match(/e(\d+)$/) ? nameLong : epKey
+        let titleIdStr = ( titleId != argv.s ? `#${titleId}|` : '' ) + epKeyTitle;
+        console.log(`[${titleIdStr}] ${showData.Episodes[i].Name}${selMark}${sumDub}${sumSub}`);
     }
     console.log();
     // select episodes
     if(selEpsArr.length>0){
         for(let s=0;s<selEpsArr.length;s++){
-            let getVideoData = await getData('GetVideos', JSON.stringify({"VideoKey":selEpsArr[s],"TitleId":argv.s}));
+            let getVideoData = await getData('GetVideos', JSON.stringify({"VideoKey":selEpsArr[s].epKey,"TitleId":selEpsArr[s].titleId}));
             if(!checkRes(getVideoData)){
                 let videoData = JSON.parse(getVideoData.res.body);
-                let ssNum = selEpsArr[s].match(/^s(\d+)/) ? parseInt(selEpsArr[s].match(/^s(\d+)/)[1]) : 1;
+                // console.log(yaml.stringify(videoData));
+                let ssNum = selEpsArr[s].epKey.match(/^s(\d+)/) ? parseInt(selEpsArr[s].epKey.match(/^s(\d+)/)[1]) : 1;
                 let showTitle = ssNum > 1 ? `${showData.Name} S${ssNum}` : showData.Name;
-                let epNum = selEpsArr[s].match(/e(\d+)$/) ? ('0'+selEpsArr[s].match(/e(\d+)$/)[1]).slice(-2) : selEpsArr[s];
+                let epNum = selEpsArr[s].epKey.match(/e(\d+)$/) ? ('0'+selEpsArr[s].epKey.match(/e(\d+)$/)[1]).slice(-2) : selEpsArr[s].nameLong.toUpperCase();
                 console.log(`[INFO] ${showTitle} - ${epNum}`);
                 // set customs
                 fnTitle = argv.title ? argv.title : showTitle;
@@ -333,6 +366,15 @@ async function getShow(){
     }
     else{
         console.log(`[INFO] Episodes not selected!`);
+    }
+}
+
+async function getStream(data){
+    if(argv.skipdl){
+        return { ok: true };
+    }
+    else{
+        return await streamdl(data);
     }
 }
 
@@ -382,17 +424,24 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
         else if(argv.proxy && !argv.ssp){
             proxy = { "host": argv.proxy, "type": "http" };
         }
-        let dldata = await streamdl({
+        let dldata = await getStream({
             fn: fnOutput,
             m3u8json: chunkList,
             baseurl: chunkList.baseUrl,
+            pcount: 10,
             proxy: (proxy?proxy:false)
         });
         if(!dldata.ok){
             console.log(`[ERROR] ${dldata.err}\n`);
             return;
         }
-        console.log(`[INFO] Video downloaded!\n`);
+        if(argv.skipdl){
+            console.log(`[INFO] Video download skiped!\n`);
+            argv.nosubs = false;
+        }
+        else{
+            console.log(`[INFO] Video downloaded!\n`);
+        }
         // subs download
         argv.stag = argv.stag ? argv.stag : argv.a
         argv.stag = shlp.cleanupFilename(argv.stag);
@@ -422,6 +471,10 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
             }
         }
         // go to muxing
+        if(argv.skipdl){
+            console.log();
+            return;
+        }
         await muxStreams();
     }
 }

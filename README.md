@@ -79,7 +79,8 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 
 * `node hidive --search "K-ON"` search "K-ON" in title
 * `node hidive -s 125 -e s01e001,s01e002` download episodes s01e001 and s01e002 from show with id 125
-* `node hidive -s 337 -e 2011120301` download episode 2011120301 from show with id 337
-* `node hidive -s 125 -e s01e003-005,2011120301` download episodes s01e003-005 and 2011120301 from show with id 125
-
-`[note] movies and ovas have episode number as air date`
+* `node hidive -s 337 -e ova01` download episode ova01 from show with id 337
+* `node hidive -s 125 -e s01e003-005,ova01` download episodes s01e003-005 and ova01 from show with id 125
+* `node hidive -s 125 -e ova01-07` download episodes ova01-07 from show with id 125
+* `node hidive -s 125 -e movie03` download episodes movie03 from show with id 125
+* `node hidive -s 125 -e movie01-02` download episodes movie01-02 from show with id 125
