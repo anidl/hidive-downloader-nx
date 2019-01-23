@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // modules build-in
-const path = require('path');
-const fs = require('fs');
+const path   = require('path');
+const fs     = require('fs');
 const crypto = require('crypto');
 
 // package json
@@ -16,37 +16,41 @@ const modulesFolder = path.join(__dirname,'modules');
 const API_DOMAIN = "https://api.hidive.com";
 const API_KEY    = "6e6b1afcf0800e2ba312bce28d1dbccc87120904";
 
+// clients
+const CLIENTWEB  = "okhttp/3.4.1";
+const CLIENTEXO  = "smartexoplayer/1.6.0.R (Linux;Android 6.0) ExoPlayerLib/2.6.0";
+
 // app id
 const devName = "Android";
 const appId   = "24i-Android";
 
 // api vars
-let deviceId         = "";
-let visitId          = "";
-let profile = {
+let deviceId  = "";
+let visitId   = "";
+let profile   = {
     userId: 0,
     profileId: 0
-}
+};
 
 // builder vars
-let ipAddress        = "";
-let xNonce           = "";
-let xSignature       = "";
+let ipAddress  = "";
+let xNonce     = "";
+let xSignature = "";
 
 // modules extra
-const yaml = require('yaml');
-const shlp = require('sei-helper');
-const yargs = require('yargs');
+const yaml    = require('yaml');
+const shlp    = require('sei-helper');
+const yargs   = require('yargs');
 const request = require('request');
-const agent = require('socks5-https-client/lib/Agent');
-const vtt = require(path.join(__dirname,'modules','module.vttconvert'));
+const agent   = require('socks5-https-client/lib/Agent');
+const vtt     = require(modulesFolder,'/module.vttconvert');
 
 // m3u8
-const m3u8 = require('m3u8-parsed');
+const m3u8     = require('m3u8-parsed');
 const streamdl = require('hls-download');
 
 // config
-const configFile = path.join(modulesFolder,'config.main.yml');
+const configFile  = path.join(modulesFolder,'config.main.yml');
 const sessionFile = path.join(modulesFolder,'config.session.yml');
 const profileFile = path.join(modulesFolder,'config.profile.yml');
 
@@ -74,17 +78,17 @@ if(fs.existsSync(profileFile)){
 
 // langs
 const langCode = {
-    'jpn': 'Japanese', // ja: Japanese
-    'eng': 'English', // en: English
-    'spa': 'Spanish', // sp: Spanish
-    'spa-eu': 'Spanish', // es: European Spanish
+    'jpn':    'Japanese',      // ja: Japanese
+    'eng':    'English',       // en: English
+    'spa':    'Spanish',       // sp: Spanish
+    'spa-eu': 'Spanish',       // es: European Spanish
     'spa-la': 'Spanish LatAm', // sp: Latin American Spanish
-    'fre': 'French', // fr: French
-    'ger': 'German', // de: German
-    'kor': 'Korean', // ko: Korean
-    'por': 'Portuguese', // pt: Portuguese
-    'tur': 'Turkish', // tr: Turkish
-    'ita': 'Italian', // it: Italian
+    'fre':    'French',        // fr: French
+    'ger':    'German',        // de: German
+    'kor':    'Korean',        // ko: Korean
+    'por':    'Portuguese',    // pt: Portuguese
+    'tur':    'Turkish',       // tr: Turkish
+    'ita':    'Italian',       // it: Italian
 };
 
 function getLangCode(lang){
@@ -599,12 +603,12 @@ function checkRes(r){
 function generateNonce(){
     const initDate      = new Date();
     const nonceDate     = [
-        initDate.getUTCFullYear().toString().slice(-2),
-        ('0'+(initDate.getUTCMonth()+1)).slice(-2),
-        ('0'+initDate.getUTCDate()).slice(-2),
-        ('0'+initDate.getUTCHours()).slice(-2),
-        ('0'+initDate.getUTCMinutes()).slice(-2)
-    ].join(''); // => "UTC:yymmddHHMM"
+        initDate.getUTCFullYear().toString().slice(-2), // yy
+        ('0'+(initDate.getUTCMonth()+1)).slice(-2),     // mm
+        ('0'+initDate.getUTCDate()).slice(-2),          // dd
+        ('0'+initDate.getUTCHours()).slice(-2),         // HH
+        ('0'+initDate.getUTCMinutes()).slice(-2)        // MM
+    ].join(''); // => "yymmddHHMM" (UTC)
     const nonceCleanStr = nonceDate + API_KEY;
     const nonceHash     = crypto.createHash('sha256').update(nonceCleanStr).digest('hex');
     return nonceHash;
@@ -616,18 +620,22 @@ function generateSignature(body){
 }
 // get data from url
 function getData(method, body){
+    // predef
+    const isGet = method.match(/^!g!/) ? true : false;
+    method      = method.replace(/^!g!/,'');
     // gen nonce and sig
     xNonce     = generateNonce();
     xSignature = generateSignature(body);
     // make
     let options = {};
-    options.method = method.match(/^!g!/) ? 'GET' : 'POST';
-    options.url = ( !method.match(/^!g!/) ? API_DOMAIN + '/api/v1/' : '') + method.replace(/^!g!/,'');
-    options.body = body;
-    options.headers = {
-        'User-Agent':      (method.match(/^!g!/) ? 'smartexoplayer/1.6.0.R (Linux;Android 6.0) ExoPlayerLib/2.6.0' : 'okhttp/3.4.1'),
-        'Content-Type':    'application/x-www-form-urlencoded; charset=UTF-8',
-    };
+    options.method  = isGet ? 'GET' : 'POST';
+    options.url     = ( !isGet ? API_DOMAIN + '/api/v1/' : '') + method;
+    options.body    = body;
+    options.headers = {};
+    options.headers['User-Agent'] = isGet ? CLIENTEXO : CLIENTWEB;
+    if(!isGet){
+        options.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
     if(options.url.match(new RegExp(API_DOMAIN))){
         options.headers = Object.assign({
             'X-ApplicationId': appId,
