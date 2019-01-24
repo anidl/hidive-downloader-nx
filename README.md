@@ -57,17 +57,19 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 `[note] this application mux into mkv by default`
 * `--mp4` mux into mp4
 * `--mks` add subtitles to mkv (if available)
+* `--caps` mux only caption subs for non-Japanese dub
 
 ### Filenaming (optional)
 
-* `-a <s>` release group ("HIDIVE" by default)
+* `-a <s>` release group (title tag) ("HIDIVE" by default)
 * `-t <s>` show title override
 * `--ep <s>` episode number override (ignored in batch mode)
 * `--suffix <s>` filename suffix override (first "SIZEp" will be replaced with actual video size, "SIZEp" by default)
 
 ### Utility
 
-* `--stag` custom title in subtitles file (override `-a` option)
+* `--stag` custom title tag in subtitle file (override `-a` option)
+* `--ftag` custom title tag in muxed file info (override `-a` option)
 * `--nocleanup` move unnecessary files to trash folder after completion instead of deleting
 * `-h`, `--help` show all options
 

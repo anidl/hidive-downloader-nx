@@ -1,7 +1,13 @@
 ## Change Log
 
+### 1.5.0 (2019/01/24)
+- Added new option `caps` — Mux caption subs only for non-Japanese dub / Mux full subs only for Japanese dub
+- Added new option `ftag` — Custom title tag in muxed file info (thanks to @Golumpa, closes #3)
+- Added new options to configuration file
+- Fixed path to `vttconvert` module (Closes #4)
+
 ### 1.4.0 (2019/01/23)
-- Improved conversion VTT+CSS to ASS, ASS style names are same as in CSS.
+- Improved conversion VTT+CSS to ASS, ASS style names are same as in CSS
 
 ### 1.3.0 (2018/12/07)
 - Improved episode selection and file naming
