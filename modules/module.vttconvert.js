@@ -6,7 +6,8 @@ const path = require('path');
 const cssPrefixRx = /\.rmp-container>\.rmp-content>\.rmp-cc-area>\.rmp-cc-container>\.rmp-cc-display>\.rmp-cc-cue /g;
 
 // colors
-const colors = require(path.join(__dirname, 'module.colors'));
+const colors = require('./module.colors');
+const defaultStyleName = 'Default';
 
 // predefined
 let relGroup = '';
@@ -14,24 +15,30 @@ let fontSize = 0;
 let tmMrg    = 0;
 
 function loadCSS(cssStr) {
-    let css = cssStr; // fs.readFileSync(name, 'utf8');
+    let css = cssStr;
     css = css.replace(cssPrefixRx, '').replace(/[\r\n]+/g, '\n').split('\n');
     let defaultStyle = `Arial,${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`
-    let styles = {
-        DefaultMain: defaultStyle,
-    };
+    let styles = { [defaultStyleName]: { params: defaultStyle, list: [] } };
+    let classList = { [defaultStyleName]: 1 };
     for (let i in css) {
-        let cls;
+        let clx, clz, clzx, rgx;
         let l = css[i];
         if (l === '') continue;
         let m = l.match(/^(.*)\{(.*)\}$/);
-        if (!m) throw new Error(`Invalid css in line ${i}: ${l}`);
+        if (!m) console.error(`[WARN] VTT2SRT: Invalid css in line ${i}: ${l}`);
         let style = parseStyle(m[2], defaultStyle);
         if (m[1] === '') {
-            styles.DefaultMain = style;
+            styles[defaultStyleName].params = style;
             defaultStyle = style;
-        } else {
-            m[1].replace(/\./g, '').split(',').forEach(x => styles[x] = style);
+        }
+        else {
+            clx = m[1].replace(/\./g, '').split(',');
+            clz = clx[0].replace(/-C(\d+)_(\d+)$/i,'').replace(/-(\d+)$/i,'');
+            classList[clz] = (classList[clz] || 0) + 1;
+            rgx = classList[clz];
+            classSubNum = rgx > 1 ? `-${rgx}` : '';
+            clzx = clz + classSubNum;
+            styles[clzx] = { params: style, list: clx };
         }
     }
     return styles;
@@ -97,7 +104,7 @@ function parseStyle(line, style) {
 
 function getPxSize(size) {
     let m = size.trim().match(/([\d.]+)(.*)/);
-    if (!m) throw new Error(`Unknown size: ${size}`);
+    if (!m) console.error(`[WARN] VTT2SRT: Unknown size: ${size}`);
     if (m[2] === 'em') m[1] *= fontSize;
     return Math.round(m[1]);
 }
@@ -140,7 +147,7 @@ function loadVTT(vttStr) {
                     start: m[1],
                     end: m[2],
                     ext: m[3].split(' ').map(x => x.split(':')).reduce((p, c) => (p[c[0]] = c[1]) && p, {}),
-                },
+                }
             };
             lineBuf = [];
             continue;
@@ -158,6 +165,7 @@ function loadVTT(vttStr) {
 }
 
 function convert(css, vtt) {
+    let stylesMap = {};
     let ass = [
         '\ufeff[Script Info]',
         'Title: '+relGroup,
@@ -170,12 +178,13 @@ function convert(css, vtt) {
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
     ];
     for (let s in css) {
-        ass.push(`Style: ${s},${css[s]}`);
+        ass.push(`Style: ${s},${css[s].params}`);
+        css[s].list.forEach(x => stylesMap[x] = s);
     }
     ass = ass.concat([
         '',
         '[Events]',
-        'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
+        'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
     ]);
     let events = {
         subtitle: [],
@@ -185,34 +194,49 @@ function convert(css, vtt) {
     };
     let linesMap = {};
     for (let l of vtt) {
-        // console.log(l);
-        let x = convertLine(css, l);
+        let x = convertLine(stylesMap, l);
         if (x.ind !== '' && linesMap[x.ind] !== undefined) {
             events[x.type][linesMap[x.ind]] += '\\N' + x.text;
-        } else {
+        }
+        else {
             events[x.type].push(x.res);
             if (x.ind !== '') {
                 linesMap[x.ind] = events[x.type].length - 1;
             }
         }
     }
-    return ass.concat(
-        'Comment: 0,0:00:00.00,0:00:00.00,DefaultMain,,0,0,0,,** Subtitles **',
-        events.subtitle,
-        'Comment: 0,0:00:00.00,0:00:00.00,DefaultMain,,0,0,0,,** Captions **',
-        events.caption,
-        'Comment: 0,0:00:00.00,0:00:00.00,DefaultMain,,0,0,0,,** Captions with position **',
-        events.capt_pos,
-        'Comment: 0,0:00:00.00,0:00:00.00,DefaultMain,,0,0,0,,** Song captions **',
-        events.song_cap
-    ).join('\r\n') + '\r\n';
+    if(events.subtitle.length>0){
+        ass = ass.concat(
+            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Subtitles **`,
+            events.subtitle
+        );
+    }
+    if(events.caption.length>0){
+        ass = ass.concat(
+            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Captions **`,
+            events.caption
+        );
+    }
+    if(events.capt_pos.length>0){
+        ass = ass.concat(
+            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Captions with position **`,
+            events.capt_pos
+        );
+    }
+    if(events.song_cap.length>0){
+        ass = ass.concat(
+            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Song captions **`,
+            events.song_cap
+        );
+    }
+    return ass.join('\r\n') + '\r\n';
 }
 
 function convertLine(css, l) {
     let start = convertTime(l.time.start);
     let end = convertTime(l.time.end);
     let txt = convertText(l.text);
-    let type = txt.style.match(/Caption/) ? 'caption' : (txt.style.match(/SongCap/) ? 'song_cap' : 'subtitle');
+    let type = txt.style.match(/Caption/i) ? 'caption' : (txt.style.match(/SongCap/i) ? 'song_cap' : 'subtitle');
     type = type == 'caption' && l.time.ext.position !== undefined ? 'capt_pos' : type;
     if (l.time.ext.align === 'left') {
         txt.text = `{\\an7}${txt.text}`;
@@ -232,12 +256,12 @@ function convertLine(css, l) {
         txt.text = `{\\pos(640,${parseFloat(PosY.toFixed(3))})}${txt.text}`;
     }
     else {
-        indregx = txt.style.match(/(.*)_\d+/);
+        indregx = txt.style.match(/(.*)_\d+$/);
         if(indregx !== null){
             ind = indregx[1];
         }
     }
-    let style = txt.style in css ? txt.style : 'DefaultMain';
+    let style = css[txt.style] || defaultStyleName;
     let res = `Dialogue: 0,${start},${end},${style},,0,0,0,,${txt.text}`;
     return { res, type, ind, text: txt.text };
 }
@@ -270,7 +294,7 @@ function convertTime(tm) {
 }
 
 function toSubTime(str) {
-    let n = [], x, sx, s; // tmMrg = 0;
+    let n = [], x, sx, s;
     x = str.split(/[:.]/).map(x => Number(x));
     x[3] = '0.'+('00'+x[3]).slice(-3);
     sx = (x[0]*60*60 + x[1]*60 + x[2] + Number(x[3]) - tmMrg).toFixed(2);

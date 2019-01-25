@@ -1,5 +1,9 @@
 ## Change Log
 
+### 1.7.0 (2019/01/25)
+- Improved conversion VTT+CSS to ASS, ASS style names are same as in CSS and merged
+- Separate script for conversion VTT+CSS to ASS locally in `vtt2ass` folder
+
 ### 1.5.0 (2019/01/24)
 - Added new option `caps` — Mux caption subs only for non-Japanese dub / Mux full subs only for Japanese dub
 - Added new option `ftag` — Custom title tag in muxed file info (thanks to @Golumpa, closes #3)

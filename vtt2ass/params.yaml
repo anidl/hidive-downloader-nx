@@ -1,0 +1,7 @@
+#HIDIVE DOWNLOADER NX: vtt2ass
+folderVTT: ./vttcss/
+folderASS: ./ass/
+relTag: HIDIVE
+fontSize: 34
+timePad: 0
+#eof
