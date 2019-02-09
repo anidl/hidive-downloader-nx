@@ -506,12 +506,7 @@ async function muxStreams(){
     const addSubs = argv.mks && sxList.length > 0 && !argv.mp4 ? true : false;
     // ftag
     argv.ftag = argv.ftag ? argv.ftag : argv.a;
-    argv.ftag = shlp.cleanupFilename(argv.ftag);
-    // caps
-    const capsOpt = !argv.caps 
-        || argv.caps &&  sxList[t].isCaps && argv.dub != 'jpn'
-        || argv.caps && !sxList[t].isCaps && argv.dub == 'jpn'
-        ? true : false;
+    argv.ftag = shlp.cleanupFilename(argv.ftag); 
     // check exec
     if( !argv.mp4 && !isFile(cfg.bin.mkvmerge) && !isFile(cfg.bin.mkvmerge+`.exe`) ){
         console.log(`[WARN] MKVMerge not found, skip using this...`);
@@ -528,7 +523,7 @@ async function muxStreams(){
             mkvmux += `"${fnOutput}.ts" `;
             if(addSubs){
                 for(let t in sxList){
-                    if(capsOpt){
+                    if(capsOpt(sxList[t].isCaps)){
                         mkvmux += `--track-name "0:${sxList[t].language}" --language "0:${sxList[t].langCode}" --default-track "0:no" "${sxList[t].file}" `;
                     }
                 }
@@ -539,7 +534,7 @@ async function muxStreams(){
         let ffsubs = {fsubs:'',meta1:'',meta2:''};
         if(addSubs){
             for(let t in sxList){
-                if(capsOpt){
+                if(capsOpt(sxList[t].isCaps)){
                     ffsubs.fsubs += `-i "${sxList[t].file}" `
                     ffsubs.meta1 += `-map ${(parseInt(t)+1)} -c:s copy `;
                     ffsubs.meta2 += `-metadata:s:s:${(t)} title="${sxList[t].language}" -metadata:s:s:${(t)} language=${sxList[t].langCode} `;
@@ -579,6 +574,13 @@ async function muxStreams(){
         }
     }
     console.log(`\n[INFO] Done!\n`);
+}
+
+function capsOpt(isCaps){
+    return !argv.caps 
+        || argv.caps &&  isCaps && argv.dub != 'jpn'
+        || argv.caps && !isCaps && argv.dub == 'jpn'
+        ? true : false;
 }
 
 function isFile(file){

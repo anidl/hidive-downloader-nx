@@ -1,5 +1,9 @@
 ## Change Log
 
+### 1.7.1 (2019/02/09)
+- Fix saving `.ass` file in standalone `vtt2ass` script (thanks to @arisudesu)
+- Fix muxing with subtitles (Closes #6)
+
 ### 1.7.0 (2019/01/25)
 - Improved conversion VTT+CSS to ASS, ASS style names are same as in CSS and merged
 - Separate script for conversion VTT+CSS to ASS locally in `vtt2ass` folder
