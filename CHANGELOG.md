@@ -1,5 +1,8 @@
 ## Change Log
 
+### 1.7.2 (2019/03/17)
+- Fix subtitles downloading (Closes #7, #8)
+
 ### 1.7.1 (2019/02/09)
 - Fix saving `.ass` file in standalone `vtt2ass` script (thanks to @arisudesu)
 - Fix muxing with subtitles (Closes #6)

@@ -333,7 +333,6 @@ async function getShow(){
             let getVideoData = await getData('GetVideos', JSON.stringify({"VideoKey":selEpsArr[s].epKey,"TitleId":selEpsArr[s].titleId}));
             if(!checkRes(getVideoData)){
                 let videoData = JSON.parse(getVideoData.res.body);
-                // console.log(yaml.stringify(videoData));
                 let ssNum = selEpsArr[s].epKey.match(/^s(\d+)/) ? parseInt(selEpsArr[s].epKey.match(/^s(\d+)/)[1]) : 1;
                 let showTitle = ssNum > 1 ? `${showData.Name} S${ssNum}` : showData.Name;
                 let epNum = selEpsArr[s].epKey.match(/e(\d+)$/) ? ('0'+selEpsArr[s].epKey.match(/e(\d+)$/)[1]).slice(-2) : selEpsArr[s].nameLong.toUpperCase();
@@ -390,7 +389,6 @@ async function getStream(data){
 }
 
 async function downloadMedia(videoUrl,subsUrls,fontSize){
-    // console.log(videoUrl,subsUrls,fontSize);
     let getVideoQualities = await getData('!g!'+videoUrl, '');
     if(checkRes(getVideoQualities)){}
     let s = m3u8(getVideoQualities.res.body).playlists;
@@ -464,9 +462,9 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
             for(let z=0; z<subsLangArr.length; z++){
                 let vttStr = '', cssStr = '', assStr = '', assExt = 'ass';
                 let subs4XUrl = subsUrls[subsLangArr[z]].split('/');
-                subsXUrl = getSubsUrl(subs4XUrl[subs4XUrl.length-1].replace(/.vtt$/,''));
-                let getCssContent = await getData('!g!'+subsXUrl.css, '');
-                let getVttContent = await getData('!g!'+subsXUrl.vtt, '');
+                subsXUrl = subs4XUrl[subs4XUrl.length-1].replace(/.vtt$/,'');
+                let getCssContent = await getData('!g!'+genSubsUrl('css', subsXUrl), '');
+                let getVttContent = await getData('!g!'+genSubsUrl('vtt', subsXUrl), '');
                 if(!checkRes(getCssContent) && !checkRes(getVttContent)){
                     let subFn = `${fnOutput}.${subsLangArr[z]}`;
                     cssStr = getCssContent.res.body;
@@ -492,12 +490,12 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
     }
 }
 
-function getSubsUrl(file){
-    const prefix = 'https://api.hidive.com/caption';
-    return {
-        vtt: `${prefix}/vtt/${file}.vtt`,
-        css: `${prefix}/css/?id=${file}.css`
-    };
+function genSubsUrl(type, file){
+    return [
+        `${API_DOMAIN}/caption/${type}/`,
+        ( type == 'css' ? '?id=' : '' ),
+        `${file}.${type}`
+    ].join('');
 }
 
 async function muxStreams(){
@@ -654,11 +652,9 @@ function getData(method, body){
     options.body    = body;
     options.headers = {};
     options.headers['User-Agent'] = isGet ? CLIENTEXO : CLIENTWEB;
-    if(!isGet){
-        options.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
-    }
-    if(options.url.match(new RegExp(API_DOMAIN))){
+    if(!isGet && options.url.match(new RegExp(API_DOMAIN))){
         options.headers = Object.assign({
+            'Content-Type':    'application/x-www-form-urlencoded; charset=UTF-8',
             'X-ApplicationId': appId,
             'X-DeviceId':      deviceId,
             'X-VisitId':       visitId,
@@ -669,7 +665,7 @@ function getData(method, body){
         }, options.headers);
         // cookies
         let cookiesList = Object.keys(session);
-        if(cookiesList.length>0){
+        if(cookiesList.length > 0){
             options.headers.Cookie = shlp.cookie.make(session,cookiesList);
         }
     }
@@ -691,9 +687,6 @@ function getData(method, body){
         options.proxy = 'http://'+argv.proxy;
         options.timeout = 10000;
     }
-    // options test
-    // console.log(options);
-    // do request
     return new Promise((resolve) => {
         request(options, (err, res) => {
             if (err){
@@ -703,7 +696,6 @@ function getData(method, body){
             if (res.statusCode != 200) {
                 resolve({ "err": true, "status": res.statusCode, res });
             }
-            // console.log(JSON.stringify(res,null,'\t'));
             if(!method.match(/^!g!/) && res.headers && res.headers['set-cookie']){
                 const newReqCookies = shlp.cookie.parse(res.headers['set-cookie']);
                 delete newReqCookies.AWSALB;
@@ -711,7 +703,6 @@ function getData(method, body){
                 delete newReqCookies.Campaign;
                 session = Object.assign(newReqCookies, session);
                 if(session.Visitor || session.VisitId || session['.AspNet.ApplicationCookie']){
-                    // console.log(session);
                     fs.writeFileSync(sessionFile,yaml.stringify(session));
                 }
             }
