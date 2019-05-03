@@ -1,5 +1,13 @@
 ## Change Log
 
+### 1.8.0 (2019/05/03)
+- replace `request` module with `got`
+- changed proxy cli options
+- changed `login` option name to `auth`
+- moved api constants to `module.apiclient.json`
+- moved language list to `module.langs.json`
+- update modules
+
 ### 1.7.2 (2019/03/17)
 - Fix subtitles downloading (Closes #7, #8)
 

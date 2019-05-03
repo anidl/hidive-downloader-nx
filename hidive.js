@@ -12,52 +12,50 @@ const pkg = require('./package');
 console.log(`\n=== HIDIVE Downloader NX ${pkg.version} ===\n`);
 const modulesFolder = path.join(__dirname,'modules');
 
-// api const
-const API_DOMAIN = "https://api.hidive.com";
-const API_KEY    = "6e6b1afcf0800e2ba312bce28d1dbccc87120904";
-
-// clients
-const CLIENTWEB  = "okhttp/3.4.1";
-const CLIENTEXO  = "smartexoplayer/1.6.0.R (Linux;Android 6.0) ExoPlayerLib/2.6.0";
-
-// app id
-const devName = "Android";
-const appId   = "24i-Android";
-
-// api vars
-let deviceId  = "";
-let visitId   = "";
-let profile   = {
-    userId: 0,
-    profileId: 0
-};
-
-// builder vars
-let ipAddress  = "";
-let xNonce     = "";
-let xSignature = "";
-
 // modules extra
 const yaml    = require('yaml');
 const shlp    = require('sei-helper');
 const yargs   = require('yargs');
-const request = require('request');
-const agent   = require('socks5-https-client/lib/Agent');
-const vtt     = require(modulesFolder+'/module.vttconvert');
 
-// m3u8
+// net requests
+const got     = require('got');
+const agent   = require('proxy-agent');
+const url     = require('url');
+
+// m3u8 and vtt
 const m3u8     = require('m3u8-parsed');
 const streamdl = require('hls-download');
+const vtt      = require(modulesFolder+'/module.vttconvert');
+
+// api config
+const api      = require(modulesFolder+'/module.apiclient');
+const langCode = require(modulesFolder+'/module.langs');
 
 // config
 const configFile  = path.join(modulesFolder,'config.main.yml');
-const sessionFile = path.join(modulesFolder,'config.session.yml');
 const profileFile = path.join(modulesFolder,'config.profile.yml');
+const sessionFile = path.join(modulesFolder,'config.session.yml');
 
-// params
+// client default
+let client = {
+    // base
+    ipAddress : '',
+    xNonce    : '',
+    xSignature: '',
+    // personal
+    deviceId: '',
+    visitId : '',
+    // profile data
+    profile: {
+        userId   : 0,
+        profileId: 0,
+    },
+};
+
+// defaults
 let cfg = {};
-let session = {};
 
+// check configs
 if(!fs.existsSync(configFile)){
     console.log(`[ERROR] config file not found!`);
     process.exit();
@@ -69,36 +67,17 @@ else{
     );
 }
 
+// load profile
+if(fs.existsSync(profileFile)){
+    client.profile = yaml.parse(fs.readFileSync(profileFile, 'utf8'));
+}
+
+// cookies
+let session = {};
+
+// load cookies
 if(fs.existsSync(sessionFile)){
     session = yaml.parse(fs.readFileSync(sessionFile, 'utf8'));
-}
-if(fs.existsSync(profileFile)){
-    profile = yaml.parse(fs.readFileSync(profileFile, 'utf8'));
-}
-
-// langs
-const langCode = {
-    'jpn':    'Japanese',      // ja: Japanese
-    'eng':    'English',       // en: English
-    'spa':    'Spanish',       // sp: Spanish
-    'spa-eu': 'Spanish',       // es: European Spanish
-    'spa-la': 'Spanish LatAm', // sp: Latin American Spanish
-    'fre':    'French',        // fr: French
-    'ger':    'German',        // de: German
-    'kor':    'Korean',        // ko: Korean
-    'por':    'Portuguese',    // pt: Portuguese
-    'tur':    'Turkish',       // tr: Turkish
-    'ita':    'Italian',       // it: Italian
-};
-
-function getLangCode(lang){
-    for (k in langCode) {
-        let r = new RegExp(langCode[k], 'i');
-        if (r.test(lang)) {
-            return k.match(/-/) ? k.split('-')[0] : k;
-        }
-    }
-    return 'unk';
 }
 
 // cli
@@ -108,7 +87,7 @@ let argv = yargs
     .help(false).version(false)
     
     // login
-    .describe('login','Enter login mode')
+    .describe('auth','Enter auth mode')
     
     // search
     .describe('search','Sets the show title for search')
@@ -132,11 +111,9 @@ let argv = yargs
     .boolean('nosubs')
     
     // proxy
-    .describe('socks','Set ipv4 socks5 proxy')
-    .describe('socks-login','Set socks5 username')
-    .describe('socks-pass','Set socks5 password')
-    .describe('proxy','Set ipv4 http(s) proxy')
-    .describe('ssp','Don\'t use proxy for stream downloading')
+    .describe('proxy','http(s)/socks proxy WHATWG url (ex. https://myproxyhost:1080/)')
+    .describe('proxy-auth','Colon-separated username and password for proxy')
+    .describe('ssp','Ignore proxy settings for stream downloading')
     .boolean('ssp')
     
     .describe('mp4','Mux into mp4')
@@ -193,7 +170,7 @@ try {
 process.chdir(cfg.dir.content);
 
 // select mode
-if(argv.login){
+if(argv.auth){
     doAuth();
 }
 else if(argv.search){
@@ -207,16 +184,21 @@ else{
     process.exit();
 }
 
+
 // init
 async function doInit(){
-    const newIp = await getData('Ping', '');
-    if(checkRes(newIp)){return false;}
-    ipAddress = JSON.parse(newIp.res.body).IPAddress;
-    const newDevice = await getData('InitDevice', JSON.stringify({"DeviceName":devName}));
-    if(checkRes(newDevice)){return false;}
-    deviceId = JSON.parse(newDevice.res.body).Data.DeviceId;
-    visitId  = JSON.parse(newDevice.res.body).Data.VisitId;
-    // const newVisitId = await getData('InitVisit', '');
+    const newIp = await reqData('Ping', '');
+    if(!newIp.ok){return false;}
+    client.ipAddress = JSON.parse(newIp.res.body).IPAddress;
+    const newDevice = await reqData('InitDevice', {"DeviceName":api.devName});
+    if(!newDevice.ok){return false;}
+    client.deviceId = JSON.parse(newDevice.res.body).Data.DeviceId;
+    client.visitId  = JSON.parse(newDevice.res.body).Data.VisitId;
+    // console.log(yaml.stringify(JSON.parse(newDevice.res.body)));
+    // const newVisitId = await reqData('InitVisit', '');
+    // if(!newVisitId.ok){return false;}
+    // visitId  = JSON.parse(newVisitId.res.body).Data.VisitId;
+    // console.log(yaml.stringify(JSON.parse(newVisitId.res.body)));
     return true;
 }
 
@@ -224,14 +206,15 @@ async function doInit(){
 async function doAuth(){
     const aInit = await doInit();
     if(!aInit){return;}
-    const iLogin = await shlp.question(`LOGIN/EMAIL`);
-    const iPsswd = await shlp.question(`PASSWORD   `);
-    const auth = await getData('Authenticate', JSON.stringify({"Email":iLogin,"Password":iPsswd}));
-    if(checkRes(auth)){return;}
+    console.log(`[INFO] Authentication`);
+    const iLogin = await shlp.question(`[Q] LOGIN/EMAIL`);
+    const iPsswd = await shlp.question(`[Q] PASSWORD   `);
+    const auth = await reqData('Authenticate', {"Email":iLogin,"Password":iPsswd});
+    if(!auth.ok){return;}
     const authData = JSON.parse(auth.res.body).Data;
-    profile.userId    = authData.User.Id;
-    profile.profileId = authData.Profiles[0].Id;
-    fs.writeFileSync(profileFile,yaml.stringify(profile));
+    client.profile.userId    = authData.User.Id;
+    client.profile.profileId = authData.Profiles[0].Id;
+    fs.writeFileSync(profileFile,yaml.stringify(client.profile));
     console.log(`[INFO] Auth complete!`);
     console.log(`[INFO] Service level for "${iLogin}" is ${authData.User.ServiceLevel}`);
 }
@@ -240,10 +223,11 @@ async function doAuth(){
 async function doSearch(){
     const aInit = await doInit();
     if(!aInit){return;}
-    const searchItems = await getData('Search', JSON.stringify({"Query":argv.search}));
-    if(checkRes(searchItems)){return;}
+    const searchItems = await reqData('Search', {"Query":argv.search});
+    if(!searchItems.ok){return;}
     const sItems = JSON.parse(searchItems.res.body).Data.TitleResults;
     if(sItems.length>0){
+         console.log(`[INFO] Search Results:`);
         for(let i=0;i<sItems.length;i++){
             console.log(`[#${sItems[i].Id}] ${sItems[i].Name} [${sItems[i].ShowInfoTitle}]`);
         }
@@ -257,8 +241,8 @@ async function doSearch(){
 async function getShow(){
     const aInit = await doInit();
     if(!aInit){return;}
-    const getShowData = await getData('GetTitle', JSON.stringify({"Id":argv.s}));
-    if(checkRes(getShowData)){return;}
+    const getShowData = await reqData('GetTitle', {"Id":argv.s});
+    if(!getShowData.ok){return;}
     const showData = JSON.parse(getShowData.res.body).Data.Title;
     // console.log(yaml.stringify(showData));
     console.log(`[#${showData.Id}] ${showData.Name} [${showData.ShowInfoTitle}]`);
@@ -330,8 +314,8 @@ async function getShow(){
     // select episodes
     if(selEpsArr.length>0){
         for(let s=0;s<selEpsArr.length;s++){
-            let getVideoData = await getData('GetVideos', JSON.stringify({"VideoKey":selEpsArr[s].epKey,"TitleId":selEpsArr[s].titleId}));
-            if(!checkRes(getVideoData)){
+            let getVideoData = await reqData('GetVideos', {"VideoKey":selEpsArr[s].epKey,"TitleId":selEpsArr[s].titleId});
+            if(getVideoData.ok){
                 let videoData = JSON.parse(getVideoData.res.body);
                 let ssNum = selEpsArr[s].epKey.match(/^s(\d+)/) ? parseInt(selEpsArr[s].epKey.match(/^s(\d+)/)[1]) : 1;
                 let showTitle = ssNum > 1 ? `${showData.Name} S${ssNum}` : showData.Name;
@@ -389,8 +373,8 @@ async function getStream(data){
 }
 
 async function downloadMedia(videoUrl,subsUrls,fontSize){
-    let getVideoQualities = await getData('!g!'+videoUrl, '');
-    if(checkRes(getVideoQualities)){}
+    let getVideoQualities = await getData(videoUrl);
+    if(!getVideoQualities.ok){return;}
     let s = m3u8(getVideoQualities.res.body).playlists;
     let pls = {};
     console.log(`[INFO] Available qualities:`);
@@ -408,8 +392,8 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
     }
     else{
         // video download
-        let reqVid = await getData('!g!'+tsDlPath,'');
-        if(checkRes(reqVid)){return;}
+        let reqVid = await getData(tsDlPath);
+        if(!reqVid.ok){return;}
         
         let chunkList = m3u8(reqVid.res.body);
         chunkList.baseUrl = tsDlPath.split('/').slice(0, -1).join('/')+'/';
@@ -422,23 +406,19 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
             chunkList.segments.splice(0, 1);
         }
         
-        let proxy;
-        if(argv.socks && !argv.ssp){
-            proxy = { "host": argv.socks, "type": "socks" };
-            if(argv['socks-login'] && argv['socks-pass']){
-                proxy['socks-login'] = argv['socks-login'];
-                proxy['socks-pass'] = argv['socks-pass'];
+        let proxyHLS;
+        if(argv.proxy && !argv.ssp){
+            try{
+                proxyHLS.url = buildProxyUrl(argv.proxy,argv['proxy-auth']);
             }
-        }
-        else if(argv.proxy && !argv.ssp){
-            proxy = { "host": argv.proxy, "type": "http" };
+            catch(e){}
         }
         let dldata = await getStream({
             fn: fnOutput,
             m3u8json: chunkList,
             baseurl: chunkList.baseUrl,
             pcount: 10,
-            proxy: (proxy?proxy:false)
+            proxy: (proxyHLS?proxyHLS:false)
         });
         if(!dldata.ok){
             console.log(`[ERROR] ${dldata.err}\n`);
@@ -463,9 +443,9 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
                 let vttStr = '', cssStr = '', assStr = '', assExt = 'ass';
                 let subs4XUrl = subsUrls[subsLangArr[z]].split('/');
                 subsXUrl = subs4XUrl[subs4XUrl.length-1].replace(/.vtt$/,'');
-                let getCssContent = await getData('!g!'+genSubsUrl('css', subsXUrl), '');
-                let getVttContent = await getData('!g!'+genSubsUrl('vtt', subsXUrl), '');
-                if(!checkRes(getCssContent) && !checkRes(getVttContent)){
+                let getCssContent = await getData(genSubsUrl('css', subsXUrl));
+                let getVttContent = await getData(genSubsUrl('vtt', subsXUrl));
+                if(getCssContent.ok && getVttContent.ok){
                     let subFn = `${fnOutput}.${subsLangArr[z]}`;
                     cssStr = getCssContent.res.body;
                     vttStr = getVttContent.res.body;
@@ -490,9 +470,19 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
     }
 }
 
+function getLangCode(lang){
+    for (k in langCode) {
+        let r = new RegExp(langCode[k], 'i');
+        if (r.test(lang)) {
+            return k.match(/-/) ? k.split('-')[0] : k;
+        }
+    }
+    return 'unk';
+}
+
 function genSubsUrl(type, file){
     return [
-        `${API_DOMAIN}/caption/${type}/`,
+        `${api.apihost}/caption/${type}/`,
         ( type == 'css' ? '?id=' : '' ),
         `${file}.${type}`
     ].join('');
@@ -591,33 +581,6 @@ function isFile(file){
     }
 }
 
-// check resp
-function checkRes(r){
-    if(r.err || r.status != 200){
-        console.log(`[ERROR] ${r.status}`);
-        if(r.status == 404 && r.res && r.res.body){
-            delete r.res.body;
-        }
-        console.log(JSON.stringify(r.res,null,'\t'));
-        return true;
-    }
-    else{
-        if(r.res.body.match(/^{/)){
-            const resJ = JSON.parse(r.res.body);
-            if(resJ.Code > 0){
-                console.log(`[ERROR] ${resJ.Code}: ${resJ.Message}\n`);
-                return true;
-            }
-            else{
-                return false;
-            }
-        }
-        else{
-            return false;
-        }
-    }
-}
-
 // Generate Nonce
 function generateNonce(){
     const initDate      = new Date();
@@ -628,40 +591,56 @@ function generateNonce(){
         ('0'+initDate.getUTCHours()).slice(-2),         // HH
         ('0'+initDate.getUTCMinutes()).slice(-2)        // MM
     ].join(''); // => "yymmddHHMM" (UTC)
-    const nonceCleanStr = nonceDate + API_KEY;
+    const nonceCleanStr = nonceDate + api.apikey;
     const nonceHash     = crypto.createHash('sha256').update(nonceCleanStr).digest('hex');
     return nonceHash;
 }
+
 // Generate Signature
 function generateSignature(body){
-    const sigCleanStr = ipAddress + appId + deviceId + visitId + profile.userId + profile.profileId + body + xNonce + API_KEY;
+    const sigCleanStr = [
+        client.ipAddress,
+        api.appId,
+        client.deviceId,
+        client.visitId,
+        client.profile.userId,
+        client.profile.profileId,
+        body,
+        client.xNonce,
+        api.apikey,
+    ].join('');
     return crypto.createHash('sha256').update(sigCleanStr).digest('hex');
 }
-// get data from url
-function getData(method, body){
-    // predef
-    const isGet = method.match(/^!g!/) ? true : false;
-    method      = method.replace(/^!g!/,'');
-    // gen nonce and sig
-    xNonce     = generateNonce();
-    xSignature = generateSignature(body);
-    // make
-    let options = {};
+
+// getData
+async function getData(reqUrl){
+    return await reqData(reqUrl, '', 'GET');
+}
+
+// postApi
+async function reqData(method, body, type){
+    let options = { headers: {} };
+    // get request type
+    const isGet = type == 'GET' ? true : false;
+    // set request type, url and user agent
     options.method  = isGet ? 'GET' : 'POST';
-    options.url     = ( !isGet ? API_DOMAIN + '/api/v1/' : '') + method;
-    options.body    = body;
-    options.headers = {};
-    options.headers['User-Agent'] = isGet ? CLIENTEXO : CLIENTWEB;
-    if(!isGet && options.url.match(new RegExp(API_DOMAIN))){
+    options.url     = ( !isGet ? api.apihost + '/api/v1/' : '') + method;
+    options.headers['user-agent'] = isGet ? api.clientExo : api.clientWeb;
+    // set api data
+    if(!isGet){
+        options.body      = body == '' ? body : JSON.stringify(body);
+        client.xNonce     = generateNonce();
+        client.xSignature = generateSignature(options.body);
+        // set api headers
         options.headers = Object.assign({
-            'Content-Type':    'application/x-www-form-urlencoded; charset=UTF-8',
-            'X-ApplicationId': appId,
-            'X-DeviceId':      deviceId,
-            'X-VisitId':       visitId,
-            'X-UserId':        profile.userId,
-            'X-ProfileId':     profile.profileId,
-            'X-Nonce':         xNonce,
-            'X-Signature':     xSignature
+            'Content-Type'   : 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-ApplicationId': api.appId,
+            'X-DeviceId'     : client.deviceId,
+            'X-VisitId'      : client.visitId,
+            'X-UserId'       : client.profile.userId,
+            'X-ProfileId'    : client.profile.profileId,
+            'X-Nonce'        : client.xNonce,
+            'X-Signature'    : client.xSignature,
         }, options.headers);
         // cookies
         let cookiesList = Object.keys(session);
@@ -669,44 +648,75 @@ function getData(method, body){
             options.headers.Cookie = shlp.cookie.make(session,cookiesList);
         }
     }
-    // proxy
-    if(argv.socks){
-        options.agentClass = agent;
-        let agentOptions = {
-            socksHost: argv.socks.split(':')[0],
-            socksPort: argv.socks.split(':')[1]
-        };
-        if(argv['socks-login'] && argv['socks-pass']){
-            agentOptions.socksUsername = argv['socks-login'];
-            agentOptions.socksPassword = argv['socks-pass'];
+    // check m3u8 request and ssp param
+    let useProxy = isGet && argv.ssp && method.match(/\.m3u8/) ? false : true;
+    // set proxy
+    if(useProxy && argv.proxy){
+        try{
+            let proxyUrl = buildProxyUrl(argv.proxy,argv['proxy-auth']);
+            options.agent = new ProxyAgent(proxyUrl);
+            options.timeout = 10000;
         }
-        options.agentOptions = agentOptions;
-        options.timeout = 10000;
+        catch(e){
+            console.log(`[WARN] Not valid proxy URL${e.input?' ('+e.input+')':''}!`);
+            console.log(`[WARN] Skiping...\n`);
+        }
     }
-    else if(argv.proxy){
-        options.proxy = 'http://'+argv.proxy;
-        options.timeout = 10000;
+    try{
+        let res = await got(options);
+        if(!isGet && res.headers && res.headers['set-cookie']){
+            const newReqCookies = shlp.cookie.parse(res.headers['set-cookie']);
+            delete newReqCookies.AWSALB;
+            delete newReqCookies['.AspNet.ExternalCookie'];
+            delete newReqCookies.Campaign;
+            session = Object.assign(newReqCookies, session);
+            if(session.Visitor || session.VisitId || session['.AspNet.ApplicationCookie']){
+                fs.writeFileSync(sessionFile,yaml.stringify(session));
+            }
+        }
+        if(!isGet){
+            const resJ = JSON.parse(res.body);
+            if(resJ.Code > 0){
+                console.log(`[ERROR] Code ${resJ.Code} (${resJ.Status}): ${resJ.Message}\n`);
+                return {
+                    ok: false,
+                    res,
+                };
+            }
+        }
+        return {
+            ok: true,
+            res,
+        };
     }
-    return new Promise((resolve) => {
-        request(options, (err, res) => {
-            if (err){
-                res = err;
-                resolve({ "err": true, "status": 0, res });
-            }
-            if (res.statusCode != 200) {
-                resolve({ "err": true, "status": res.statusCode, res });
-            }
-            if(!method.match(/^!g!/) && res.headers && res.headers['set-cookie']){
-                const newReqCookies = shlp.cookie.parse(res.headers['set-cookie']);
-                delete newReqCookies.AWSALB;
-                delete newReqCookies['.AspNet.ExternalCookie'];
-                delete newReqCookies.Campaign;
-                session = Object.assign(newReqCookies, session);
-                if(session.Visitor || session.VisitId || session['.AspNet.ApplicationCookie']){
-                    fs.writeFileSync(sessionFile,yaml.stringify(session));
-                }
-            }
-            resolve({ "err": false, "status": res.statusCode, res});
-        });
+    catch(error){
+        if(error.statusCode && error.statusMessage){
+            console.log(`\n[ERROR] ${error.name} ${error.statusCode}: ${error.statusMessage}\n`);
+        }
+        else{
+            console.log(`\n[ERROR] ${error.name}: ${error.code}\n`);
+        }
+        return {
+            ok: false,
+            error,
+        };
+    }
+}
+
+// make proxy url
+function buildProxyUrl(proxyBaseUrl,proxyAuth){
+    let proxyCfg = new URL(proxyBaseUrl);
+    if(!proxyCfg.hostname || !proxyCfg.port){
+        throw new Error();
+    }
+    if(proxyAuth && proxyAuth.match(':')){
+        proxyCfg.auth = proxyAuth;
+    }
+    return url.format({
+        protocol: proxyCfg.protocol,
+        slashes: true,
+        auth: proxyCfg.auth,
+        hostname: proxyCfg.hostname,
+        port: proxyCfg.port,
     });
 }

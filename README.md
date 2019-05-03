@@ -30,7 +30,7 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 
 ### Authentication
 
-* `--login` enter login mode
+* `--auth` enter auth mode
 
 ### Get Show ID
 
@@ -46,10 +46,8 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 
 ### Proxy
 
-* `--socks <s>` set ipv4 socks5 proxy for all requests to HIDIVE api
-* `--socks-login <s>` set username for socks5 proxy
-* `--socks-pass <s>`  set password for socks5 proxy
-* `--proxy <s>` set ipv4 http(s) proxy for all requests to HIDIVE api
+* `--proxy <s>` http(s)/socks proxy WHATWG url (ex. https://myproxyhost:1080)
+* `--proxy-auth <s>` Colon-separated username and password for proxy
 * `--ssp` don't use proxy for stream downloading
 
 ### Muxing
