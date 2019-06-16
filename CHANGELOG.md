@@ -1,5 +1,9 @@
 ## Change Log
 
+### 1.9.0 (2019/06/16)
+- Api keys updated to newer version (Closes #12)
+- update modules
+
 ### 1.8.0 (2019/05/03)
 - replace `request` module with `got`
 - changed proxy cli options

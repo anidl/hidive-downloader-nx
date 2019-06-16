@@ -482,7 +482,7 @@ function getLangCode(lang){
 
 function genSubsUrl(type, file){
     return [
-        `${api.apihost}/caption/${type}/`,
+        `${api.wwwhost}/caption/${type}/`,
         ( type == 'css' ? '?id=' : '' ),
         `${file}.${type}`
     ].join('');
