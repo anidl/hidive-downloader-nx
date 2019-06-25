@@ -586,11 +586,11 @@ function generateNonce(){
     const initDate      = new Date();
     const nonceDate     = [
         initDate.getUTCFullYear().toString().slice(-2), // yy
-        ('0'+(initDate.getUTCMonth()+1)).slice(-2),     // mm
+        ('0'+(initDate.getUTCMonth()+1)).slice(-2),     // MM
         ('0'+initDate.getUTCDate()).slice(-2),          // dd
         ('0'+initDate.getUTCHours()).slice(-2),         // HH
-        ('0'+initDate.getUTCMinutes()).slice(-2)        // MM
-    ].join(''); // => "yymmddHHMM" (UTC)
+        ('0'+initDate.getUTCMinutes()).slice(-2)        // mm
+    ].join(''); // => "yyMMddHHmm" (UTC)
     const nonceCleanStr = nonceDate + api.apikey;
     const nonceHash     = crypto.createHash('sha256').update(nonceCleanStr).digest('hex');
     return nonceHash;
@@ -631,17 +631,20 @@ async function reqData(method, body, type){
         options.body      = body == '' ? body : JSON.stringify(body);
         client.xNonce     = generateNonce();
         client.xSignature = generateSignature(options.body);
+		options.headers['Content-Type']    = 'application/x-www-form-urlencoded; charset=UTF-8';
+		options.headers['X-ApplicationId'] = api.appId;
         // set api headers
-        options.headers = Object.assign({
-            'Content-Type'   : 'application/x-www-form-urlencoded; charset=UTF-8',
-            'X-ApplicationId': api.appId,
-            'X-DeviceId'     : client.deviceId,
-            'X-VisitId'      : client.visitId,
-            'X-UserId'       : client.profile.userId,
-            'X-ProfileId'    : client.profile.profileId,
-            'X-Nonce'        : client.xNonce,
-            'X-Signature'    : client.xSignature,
-        }, options.headers);
+		if(method != 'Ping'){
+			options.headers = Object.assign({
+				'X-DeviceId'     : client.deviceId,
+				'X-VisitId'      : client.visitId,
+				'X-UserId'       : client.profile.userId,
+				'X-ProfileId'    : client.profile.profileId,
+				'X-Nonce'        : client.xNonce,
+				'X-Signature'    : client.xSignature,
+			}, options.headers);
+			// console.log(options.headers);
+		}
         // cookies
         let cookiesList = Object.keys(session);
         if(cookiesList.length > 0){
@@ -678,6 +681,10 @@ async function reqData(method, body, type){
             const resJ = JSON.parse(res.body);
             if(resJ.Code > 0){
                 console.log(`[ERROR] Code ${resJ.Code} (${resJ.Status}): ${resJ.Message}\n`);
+				if(resJ.Code == 81 || resJ.Code == 5){
+					console.log(`[NOTE] App was broken because of changes in official Android app.`);
+					console.log(`[NOTE] See: https://github.com/seiya-dev/hidive-downloader-nx/issues/14\n`);
+				}
                 return {
                     ok: false,
                     res,

@@ -1,5 +1,8 @@
 ## Change Log
 
+### 1.9.1-broken (2019/06/25)
+- App is broken, see: seiya-dev/hidive-downloader-nx#14
+
 ### 1.9.0 (2019/06/16)
 - Api keys updated to newer version (Closes #12)
 - update modules

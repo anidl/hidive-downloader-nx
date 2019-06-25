@@ -1,9 +1,9 @@
 {
     "wwwhost"  : "https://www.hidive.com",
     "apihost"  : "https://api.hidive.com",
-    "apikey"   : "6621bb6563064f548c0f70d10beea178317af1f",
+    "apikey"   : "6e6b1afcf0800e2ba312bce28d1dbccc87120904",
     "devName"  : "Android",
-    "appId"    : "24i-Android2",
+    "appId"    : "24i-Android",
     "clientWeb": "okhttp/3.4.1",
     "clientExo": "smartexoplayer/1.6.0.R (Linux;Android 6.0) ExoPlayerLib/2.6.0"
 }
