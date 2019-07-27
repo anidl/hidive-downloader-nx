@@ -1,5 +1,9 @@
 ## Change Log
 
+### 1.9.2 (2019/07/27)
+- New api key required for using this application
+- Updated `module.vttconvert` module
+
 ### 1.9.1-broken (2019/06/25)
 - App is broken, see: seiya-dev/hidive-downloader-nx#14
 

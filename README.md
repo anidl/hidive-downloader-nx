@@ -1,6 +1,7 @@
 # HIDIVE Downloader NX
 
 HIDIVE Downloader NX is capable of downloading videos from the *HIDIVE* streaming service.
+Api key required for using this application.
 
 ## Legal Warning
 
@@ -39,7 +40,7 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 ### Download Video
 
 * `-s <i> -e <s>` sets the show id and episode ids (comma-separated, hyphen-sequence)
-* `-q <i>` sets the video quality [360p, 480p, 720p, 1080p]
+* `-q <s>` sets the video quality [360p, 480p, 720p, 1080p]
 * `--dub` select dub language [eng, jpn, ...] (eng dub by default)
 * `--br` force download broadcast version
 * `--nosubs` skip download subtitles for non-japanese dub (if available)

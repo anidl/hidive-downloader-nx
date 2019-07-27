@@ -193,9 +193,15 @@ function convert(css, vtt) {
         song_cap: [],
     };
     let linesMap = {};
-    for (let l of vtt) {
-        let x = convertLine(stylesMap, l);
-        if (x.ind !== '' && linesMap[x.ind] !== undefined) {
+    for (let l in vtt) {
+        let x = convertLine(stylesMap, vtt[l]);
+        if (x.ind !== '' && linesMap[x.ind] !== undefined){
+            if(x.subInd > 1){
+                let fx = convertLine(stylesMap, vtt[l-x.subInd+1]);
+                if(x.style != fx.style){
+                    x.text = `{\\r${x.style}}${x.text}{\\r}`;
+                }
+            }
             events[x.type][linesMap[x.ind]] += '\\N' + x.text;
         }
         else {
@@ -204,6 +210,7 @@ function convert(css, vtt) {
                 linesMap[x.ind] = events[x.type].length - 1;
             }
         }
+
     }
     if(events.subtitle.length>0){
         ass = ass.concat(
@@ -241,7 +248,7 @@ function convertLine(css, l) {
     if (l.time.ext.align === 'left') {
         txt.text = `{\\an7}${txt.text}`;
     }
-    let ind = '';
+    let ind = '', subInd = 1;
     let sMinus = 0; // (19.2 * 2);
     if (l.time.ext.position !== undefined) {
         let pos = parseInt(l.time.ext.position);
@@ -256,14 +263,15 @@ function convertLine(css, l) {
         txt.text = `{\\pos(640,${parseFloat(PosY.toFixed(3))})}${txt.text}`;
     }
     else {
-        indregx = txt.style.match(/(.*)_\d+$/);
+        indregx = txt.style.match(/(.*)_(\d+)$/);
         if(indregx !== null){
-            ind = indregx[1];
+            ind    = indregx[1];
+            subInd = parseInt(indregx[2]);
         }
     }
     let style = css[txt.style] || defaultStyleName;
     let res = `Dialogue: 0,${start},${end},${style},,0,0,0,,${txt.text}`;
-    return { res, type, ind, text: txt.text };
+    return { type, ind, subInd, start, end, style, text: txt.text, res };
 }
 
 function convertText(text) {

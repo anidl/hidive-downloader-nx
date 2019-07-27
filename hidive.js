@@ -631,20 +631,20 @@ async function reqData(method, body, type){
         options.body      = body == '' ? body : JSON.stringify(body);
         client.xNonce     = generateNonce();
         client.xSignature = generateSignature(options.body);
-		options.headers['Content-Type']    = 'application/x-www-form-urlencoded; charset=UTF-8';
-		options.headers['X-ApplicationId'] = api.appId;
+        options.headers['Content-Type']    = 'application/x-www-form-urlencoded; charset=UTF-8';
+        options.headers['X-ApplicationId'] = api.appId;
         // set api headers
-		if(method != 'Ping'){
-			options.headers = Object.assign({
-				'X-DeviceId'     : client.deviceId,
-				'X-VisitId'      : client.visitId,
-				'X-UserId'       : client.profile.userId,
-				'X-ProfileId'    : client.profile.profileId,
-				'X-Nonce'        : client.xNonce,
-				'X-Signature'    : client.xSignature,
-			}, options.headers);
-			// console.log(options.headers);
-		}
+        if(method != 'Ping'){
+            options.headers = Object.assign({
+                'X-DeviceId'     : client.deviceId,
+                'X-VisitId'      : client.visitId,
+                'X-UserId'       : client.profile.userId,
+                'X-ProfileId'    : client.profile.profileId,
+                'X-Nonce'        : client.xNonce,
+                'X-Signature'    : client.xSignature,
+            }, options.headers);
+            // console.log(options.headers);
+        }
         // cookies
         let cookiesList = Object.keys(session);
         if(cookiesList.length > 0){
@@ -681,10 +681,10 @@ async function reqData(method, body, type){
             const resJ = JSON.parse(res.body);
             if(resJ.Code > 0){
                 console.log(`[ERROR] Code ${resJ.Code} (${resJ.Status}): ${resJ.Message}\n`);
-				if(resJ.Code == 81 || resJ.Code == 5){
-					console.log(`[NOTE] App was broken because of changes in official Android app.`);
-					console.log(`[NOTE] See: https://github.com/seiya-dev/hidive-downloader-nx/issues/14\n`);
-				}
+                if(resJ.Code == 81 || resJ.Code == 5){
+                    console.log(`[NOTE] App was broken because of changes in official app.`);
+                    console.log(`[NOTE] See: https://github.com/seiya-dev/hidive-downloader-nx/issues/14\n`);
+                }
                 return {
                     ok: false,
                     res,
