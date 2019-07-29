@@ -1,5 +1,8 @@
 ## Change Log
 
+### 1.9.3 (2019/07/29)
+- Api key updated (Closes #14)
+
 ### 1.9.2 (2019/07/27)
 - New api key required for using this application
 - Updated `module.vttconvert` module

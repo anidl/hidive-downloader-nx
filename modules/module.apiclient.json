@@ -1,9 +1,9 @@
 {
     "wwwhost"  : "https://www.hidive.com",
     "apihost"  : "https://api.hidive.com",
-    "apikey"   : "6e6b1afcf0800e2ba312bce28d1dbccc87120904",
+    "apikey"   : "1f3e6b944a1a260e8cd1a71e058acff75ec7f427",
     "devName"  : "Android",
-    "appId"    : "24i-Android",
+    "appId"    : "24i-FireTV",
     "clientWeb": "okhttp/3.4.1",
     "clientExo": "smartexoplayer/1.6.0.R (Linux;Android 6.0) ExoPlayerLib/2.6.0"
 }
