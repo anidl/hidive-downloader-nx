@@ -43,12 +43,12 @@ let client = {
     xNonce    : '',
     xSignature: '',
     // personal
-    deviceId: '',
     visitId : '',
     // profile data
     profile: {
         userId   : 0,
         profileId: 0,
+        deviceId : '',
     },
 };
 
@@ -187,18 +187,24 @@ else{
 
 // init
 async function doInit(){
-    const newIp = await reqData('Ping', '');
-    if(!newIp.ok){return false;}
-    client.ipAddress = JSON.parse(newIp.res.body).IPAddress;
-    const newDevice = await reqData('InitDevice', {"DeviceName":api.devName});
-    if(!newDevice.ok){return false;}
-    client.deviceId = JSON.parse(newDevice.res.body).Data.DeviceId;
-    client.visitId  = JSON.parse(newDevice.res.body).Data.VisitId;
-    // console.log(yaml.stringify(JSON.parse(newDevice.res.body)));
-    // const newVisitId = await reqData('InitVisit', '');
-    // if(!newVisitId.ok){return false;}
-    // visitId  = JSON.parse(newVisitId.res.body).Data.VisitId;
-    // console.log(yaml.stringify(JSON.parse(newVisitId.res.body)));
+    if(!client.ipAddress){
+        const newIp = await reqData('Ping', '');
+        if(!newIp.ok){return false;}
+        client.ipAddress = JSON.parse(newIp.res.body).IPAddress;
+    }
+    if(!client.profile.deviceId){
+        const newDevice = await reqData('InitDevice', {"DeviceName":api.devName});
+        if(!newDevice.ok){return false;}
+        client.profile = Object.assign(client.profile,{
+            deviceId: JSON.parse(newDevice.res.body).Data.DeviceId,
+        });
+        fs.writeFileSync(profileFile,yaml.stringify(client.profile));
+    }
+    if(!client.visitId){
+        const newVisitId = await reqData('InitVisit', {});
+        if(!newVisitId.ok){return false;}
+        client.visitId = JSON.parse(newVisitId.res.body).Data.VisitId;
+    }
     return true;
 }
 
@@ -212,8 +218,10 @@ async function doAuth(){
     const auth = await reqData('Authenticate', {"Email":iLogin,"Password":iPsswd});
     if(!auth.ok){return;}
     const authData = JSON.parse(auth.res.body).Data;
-    client.profile.userId    = authData.User.Id;
-    client.profile.profileId = authData.Profiles[0].Id;
+    client.profile = Object.assign(client.profile, {
+        userId:    authData.User.Id,
+        profileId: authData.Profiles[0].Id,
+    });
     fs.writeFileSync(profileFile,yaml.stringify(client.profile));
     console.log(`[INFO] Auth complete!`);
     console.log(`[INFO] Service level for "${iLogin}" is ${authData.User.ServiceLevel}`);
@@ -597,14 +605,14 @@ function generateNonce(){
 }
 
 // Generate Signature
-function generateSignature(body){
+function generateSignature(body,visitId,profile){
     const sigCleanStr = [
         client.ipAddress,
         api.appId,
-        client.deviceId,
-        client.visitId,
-        client.profile.userId,
-        client.profile.profileId,
+        profile.deviceId,
+        visitId,
+        profile.userId,
+        profile.profileId,
         body,
         client.xNonce,
         api.apikey,
@@ -629,30 +637,62 @@ async function reqData(method, body, type){
     // set api data
     if(!isGet){
         options.body      = body == '' ? body : JSON.stringify(body);
-        client.xNonce     = generateNonce();
-        client.xSignature = generateSignature(options.body);
-        options.headers['Content-Type']    = 'application/x-www-form-urlencoded; charset=UTF-8';
-        options.headers['X-ApplicationId'] = api.appId;
         // set api headers
         if(method != 'Ping'){
-            options.headers = Object.assign({
-                'X-DeviceId'     : client.deviceId,
-                'X-VisitId'      : client.visitId,
-                'X-UserId'       : client.profile.userId,
-                'X-ProfileId'    : client.profile.profileId,
+            client.xNonce     = generateNonce();
+            if(method == 'InitVisit'){
+                client.xSignature = generateSignature(options.body,'',{
+                    deviceId:  client.profile.deviceId,
+                    userId:    0,
+                    profileId: 0
+                });
+                options.headers = Object.assign(options.headers, {
+                    'X-VisitId'      : '',
+                    'X-UserId'       : 0,
+                    'X-ProfileId'    : 0,
+                });
+            }
+            else{
+                client.xSignature = generateSignature(options.body,client.visitId,client.profile);
+                options.headers = Object.assign(options.headers, {
+                    'X-VisitId'      : client.visitId,
+                    'X-UserId'       : client.profile.userId,
+                    'X-ProfileId'    : client.profile.profileId,
+                });
+            }
+            options.headers = Object.assign(options.headers, {
+                'X-DeviceId'     : client.profile.deviceId,
                 'X-Nonce'        : client.xNonce,
                 'X-Signature'    : client.xSignature,
-            }, options.headers);
-            // console.log(options.headers);
+            });
         }
+        options.headers = Object.assign({
+            'Content-Type'   : 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-ApplicationId': api.appId,
+        }, options.headers);
         // cookies
-        let cookiesList = Object.keys(session);
+        let cookiesList    = Object.keys(session);
         if(cookiesList.length > 0){
-            options.headers.Cookie = shlp.cookie.make(session,cookiesList);
+            if(method == 'Ping'){
+                options.headers.Cookie = shlp.cookie.make(session,cookiesList);
+            }
         }
     }
+    else if(isGet && !options.url.match(/\?/)){
+        client.xNonce     = generateNonce();
+        client.xSignature = generateSignature(options.body,client.visitId,client.profile);
+        options.url = options.url + '?' + (new URLSearchParams({
+            'X-ApplicationId': api.appId,
+            'X-DeviceId'     : client.profile.deviceId,
+            'X-VisitId'      : client.visitId,
+            'X-UserId'       : client.profile.userId,
+            'X-ProfileId'    : client.profile.profileId,
+            'X-Nonce'        : client.xNonce,
+            'X-Signature'    : client.xSignature,
+        })).toString();
+    }
     // check m3u8 request and ssp param
-    let useProxy = isGet && argv.ssp && method.match(/\.m3u8/) ? false : true;
+    let useProxy = isGet && argv.ssp && options.url.match(/\.m3u8/) ? false : true;
     // set proxy
     if(useProxy && argv.proxy){
         try{
@@ -666,14 +706,17 @@ async function reqData(method, body, type){
         }
     }
     try{
+        if(argv.debug){
+            console.log(`[DEBUG] Request params:`);
+            console.log(options);
+        }
         let res = await got(options);
         if(!isGet && res.headers && res.headers['set-cookie']){
             const newReqCookies = shlp.cookie.parse(res.headers['set-cookie']);
-            delete newReqCookies.AWSALB;
+            delete newReqCookies['.AspNet.ApplicationCookie'];
             delete newReqCookies['.AspNet.ExternalCookie'];
-            delete newReqCookies.Campaign;
-            session = Object.assign(newReqCookies, session);
-            if(session.Visitor || session.VisitId || session['.AspNet.ApplicationCookie']){
+            session = Object.assign(session, newReqCookies);
+            if(session.VisitId || session.UserStatus || session.Visitor){
                 fs.writeFileSync(sessionFile,yaml.stringify(session));
             }
         }
@@ -684,6 +727,9 @@ async function reqData(method, body, type){
                 if(resJ.Code == 81 || resJ.Code == 5){
                     console.log(`[NOTE] App was broken because of changes in official app.`);
                     console.log(`[NOTE] See: https://github.com/seiya-dev/hidive-downloader-nx/issues/14\n`);
+                }
+                if(resJ.Code == 55){
+                    console.log(`[NOTE] You need premium account to view this video.`);
                 }
                 return {
                     ok: false,

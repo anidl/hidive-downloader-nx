@@ -1,5 +1,8 @@
 ## Change Log
 
+### 1.9.4 (2019/08/01)
+- Fix downloading premium videos (Closes #16)
+
 ### 1.9.3 (2019/07/29)
 - Api key updated (Closes #14)
 
