@@ -2,6 +2,7 @@
 folderVTT: ./vttcss/
 folderASS: ./ass/
 relTag: HIDIVE
+rFont: Open Sans Semibold
 fontSize: 34
-timePad: 0
+timePad: 5
 #eof

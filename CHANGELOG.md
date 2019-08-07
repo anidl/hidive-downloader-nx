@@ -1,5 +1,8 @@
 ## Change Log
 
+### 1.10.0 (2019/08/07)
+- Added `rfont` option for font replacing in subtitles
+
 ### 1.9.4 (2019/08/01)
 - Fix downloading premium videos (Closes #16)
 

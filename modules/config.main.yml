@@ -1,4 +1,4 @@
-#HIDIVE Downloader NX configuration v1.2
+#HIDIVE Downloader NX configuration v3
 bin:
   ffmpeg: ${__dirname}/modules/ffmpeg
   mkvmerge: ${__dirname}/modules/mkvtoolnix/mkvmerge
@@ -15,5 +15,6 @@ cli:
   # mp4mux: false
   # muxSubs: false
   # capsSubs: false
+  # assFont: Open Sans Semibold
   # noCleanUp: false
 #eof

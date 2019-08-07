@@ -68,6 +68,7 @@ After installing NodeJS with NPM go to directory with `package.json` file and ty
 ### Utility
 
 * `--stag` custom title tag in subtitle file (override `-a` option)
+* `--rfont` Replace all default fonts with custom font in subtitle file
 * `--ftag` custom title tag in muxed file info (override `-a` option)
 * `--nocleanup` move unnecessary files to trash folder after completion instead of deleting
 * `-h`, `--help` show all options

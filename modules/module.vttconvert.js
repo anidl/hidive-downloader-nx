@@ -13,6 +13,7 @@ const defaultStyleName = 'Default';
 let relGroup = '';
 let fontSize = 0;
 let tmMrg    = 0;
+let rFont    = ''; // 'Open Sans Semibold' is recomended
 
 function loadCSS(cssStr) {
     let css = cssStr;
@@ -57,7 +58,7 @@ function parseStyle(line, style) {
         let cl;
         switch (st[0]) {
             case 'font-family':
-                style[0] = st[1].match(/[\s"]*([^",]*)/)[1];
+                style[0] = rFont == '' ? st[1].match(/[\s"]*([^",]*)/)[1] : rFont;
                 break;
             case 'font-size':
                 style[1] = getPxSize(st[1]);
@@ -173,6 +174,7 @@ function convert(css, vtt) {
         'WrapStyle: 0',
         'PlayResX: 1280',
         'PlayResY: 720',
+        'ScaledBorderAndShadow: yes',
         '',
         '[V4+ Styles]',
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
@@ -315,10 +317,11 @@ function toSubTime(str) {
     return n.slice(0, 3).join(':') + '.' + n[3];
 }
 
-module.exports = (group, xFontSize, vttStr, cssStr, timeMargin) => {
+module.exports = (group, xFontSize, vttStr, cssStr, timeMargin, replaceFont) => {
     relGroup = group;
     fontSize = xFontSize > 0 ? xFontSize : 34; // 1em to pix
-    tmMrg = timeMargin ? timeMargin : 0;
+    tmMrg    = timeMargin ? timeMargin : 0;
+    rFont    = replaceFont ? replaceFont : rFont;
     return convert(
         loadCSS(cssStr),
         loadVTT(vttStr)

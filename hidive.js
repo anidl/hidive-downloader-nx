@@ -104,7 +104,7 @@ let argv = yargs
     .choices('dub', Object.keys(langCode))
     .default('dub', cfg.cli.dubLanguage)
     
-    .describe('br','Forсe download broadcast version instead of home video version (if both versions presents)')
+    .describe('br','Force download broadcast version instead of home video version (if both versions presents)')
     .boolean('br')
     
     .describe('nosubs','Skip download subtitles for non-japanese dub (if available)')
@@ -136,6 +136,8 @@ let argv = yargs
     // util
     .describe('stag','Custom title tag in subtitle file')
     .default('stag',cfg.cli.assTitleTag)
+    .describe('rfont','Replace all default fonts with custom font in subtitle file')
+    .default('rfont',cfg.cli.assFont)
     .describe('ftag','Custom title tag in muxed file info')
     .default('ftag',cfg.cli.muxTitleTag)
     .describe('nocleanup','Move temporary files to trash folder instead of deleting')
@@ -457,7 +459,7 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
                     let subFn = `${fnOutput}.${subsLangArr[z]}`;
                     cssStr = getCssContent.res.body;
                     vttStr = getVttContent.res.body;
-                    assStr = vtt(argv.stag,fontSize,vttStr,cssStr,subsMargin);
+                    assStr = vtt(argv.stag, fontSize, vttStr, cssStr, subsMargin, argv.rfont);
                     fs.writeFileSync(`${subFn}.${assExt}`, assStr,'utf8');
                     sxList.push({
                         file: `${subFn}.${assExt}`,

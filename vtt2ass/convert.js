@@ -30,7 +30,7 @@ for(const f of files){
         const vttContent = fs.readFileSync(vttFile, 'utf8');
         const cssContent = fs.readFileSync(cssFile, 'utf8');
         console.log(`[INFO] Converting: ${f} ...`)
-        const assContent = vtt(param.relTag, param.fontSize, vttContent, cssContent, param.timePad);
+        const assContent = vtt(param.relTag, param.fontSize, vttContent, cssContent, param.timePad, param.rFont);
         fs.writeFileSync(assFile, assContent, 'utf8');
     }
 }
