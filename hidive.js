@@ -516,17 +516,29 @@ async function muxStreams(){
     }
     // mux to mkv
     if(!argv.mp4 && cfg.bin.mkvmerge){
-        let mkvmux  = `-o "${fnOutput}.mkv" --disable-track-statistics-tags --engage no_variable_data `;
-            mkvmux += `--track-name "1:[${argv.ftag}]" --language "0:${argv.dub}" --video-tracks 1 --audio-tracks 0 --no-subtitles --no-attachments `;
-            mkvmux += `"${fnOutput}.ts" `;
-            if(addSubs){
-                for(let t in sxList){
-                    if(capsOpt(sxList[t].isCaps)){
-                        mkvmux += `--track-name "0:${sxList[t].language}" --language "0:${sxList[t].langCode}" --default-track "0:no" "${sxList[t].file}" `;
-                    }
+        let mkvmux  = [];
+        // defaults
+        mkvmux.push(`--output`,`${fnOutput}.mkv`);
+        mkvmux.push(`--disable-track-statistics-tags`,`--engage`,`no_variable_data`);
+        // video
+        mkvmux.push(`--track-name`,`1:[${argv.ftag}]`);
+        mkvmux.push(`--language`,`0:${argv.dub}`);
+        mkvmux.push(`--video-tracks`,`1`,`--audio-tracks`,`0`);
+        mkvmux.push(`--no-subtitles`,`--no-attachments`);
+        mkvmux.push(`${fnOutput}.ts`);
+        // subtitles
+        if(addSubs){
+            for(let t in sxList){
+                if(capsOpt(sxList[t].isCaps)){
+                    mkvmux.push(`--track-name`,`0:${sxList[t].language}`);
+                    mkvmux.push(`--language`,`0:${sxList[t].langCode}`);
+                    mkvmux.push(`${sxList[t].file}`);
                 }
             }
-        shlp.exec(`mkvmerge`,`"${cfg.bin.mkvmerge}"`,mkvmux);
+        }
+        fs.writeFileSync(`${fnOutput}.json`,JSON.stringify(mkvmux,null,'  '));
+        shlp.exec(`mkvmerge`,`"${cfg.bin.mkvmerge}"`,`@"${fnOutput}.json"`);
+        fs.unlinkSync(`${fnOutput}.json`);
     }
     else if(cfg.bin.ffmpeg){
         let ffsubs = {fsubs:'',meta1:'',meta2:''};
