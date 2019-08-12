@@ -1,6 +1,6 @@
 {
     "name": "hidive-downloader-nx",
-    "version": "1.10.0",
+    "version": "1.11.0",
     "description": "Download videos from HIDIVE via cli.",
     "keywords": [
         "download",
@@ -23,11 +23,11 @@
     "main": "hidive.js",
     "dependencies": {
         "got": "^9.6.0",
-        "hls-download": "^2.0.1",
+        "hls-download": "^2.1.4",
         "m3u8-parsed": "^1.2.0",
         "proxy-agent": "^3.1.0",
         "sei-helper": "^3.2.0",
         "yaml": "^1.6.0",
-        "yargs": "^13.2.4"
+        "yargs": "^13.3.0"
     }
 }

@@ -1,5 +1,8 @@
 ## Change Log
 
+### 1.11.0 (2019/08/12)
+- Updated `module.vttconvert` module, improved css parsing
+
 ### 1.10.0 (2019/08/07)
 - Added `rfont` option for font replacing in subtitles
 

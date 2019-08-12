@@ -8,17 +8,18 @@ const cssPrefixRx = /\.rmp-container>\.rmp-content>\.rmp-cc-area>\.rmp-cc-contai
 // colors
 const colors = require('./module.colors');
 const defaultStyleName = 'Default';
+const defaultStyleFont = 'Open Sans Semibold';
 
 // predefined
 let relGroup = '';
 let fontSize = 0;
 let tmMrg    = 0;
-let rFont    = ''; // 'Open Sans Semibold' is recomended
+let rFont    = '';
 
 function loadCSS(cssStr) {
     let css = cssStr;
     css = css.replace(cssPrefixRx, '').replace(/[\r\n]+/g, '\n').split('\n');
-    let defaultStyle = `Arial,${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`
+    let defaultStyle = `${defaultStyleFont},${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`
     let styles = { [defaultStyleName]: { params: defaultStyle, list: [] } };
     let classList = { [defaultStyleName]: 1 };
     for (let i in css) {
@@ -26,7 +27,7 @@ function loadCSS(cssStr) {
         let l = css[i];
         if (l === '') continue;
         let m = l.match(/^(.*)\{(.*)\}$/);
-        if (!m) console.error(`[WARN] VTT2SRT: Invalid css in line ${i}: ${l}`);
+        if (!m) console.error(`[WARN] VTT2ASS: Invalid css in line ${i}: ${l}`);
         let style = parseStyle(m[2], defaultStyle);
         if (m[1] === '') {
             styles[defaultStyleName].params = style;
@@ -92,12 +93,23 @@ function parseStyle(line, style) {
                     break;
                 }
             case 'text-shadow':
-                if(st[1] === '1px 1px black, -1px -1px black, 1px -1px black, -1px 1px black, 0px 1px black, 1px 0px black'){
-                    style[16] = 1;
+                st[1] = st[1].split(',').map(r => r.trim());
+                st[1] = st[1].map(r => { return ( r.split(' ').length > 3 ? r.replace(/(\d+)px black$/,'') : r.replace(/black$/,'') ).trim() });
+                st[1] = st[1].map(r => r.replace(/-/g,'').replace(/px/g,'').replace(/(^| )0( |$)/g,' ').trim()).join(' ');
+                st[1] = st[1].split(' ');
+                if(st[1].length != 10){
+                    console.log(`[WARN] VTT2ASS: Can't properly parse text-shadow: ${s.trim()}`);
                     break;
                 }
+                st[1] = [...new Set(st[1])];
+                if(st[1].length > 1){
+                    console.log(`[WARN] VTT2ASS: Can't properly parse text-shadow: ${s.trim()}`);
+                    break;
+                }
+                style[16] = st[1][0];
+                break;
             default:
-                console.error(`[WARN] VTT2SRT: Unknown style: ${s.trim()}`);
+                console.error(`[WARN] VTT2ASS: Unknown style: ${s.trim()}`);
         }
     }
     return style.join(',');
@@ -105,7 +117,7 @@ function parseStyle(line, style) {
 
 function getPxSize(size) {
     let m = size.trim().match(/([\d.]+)(.*)/);
-    if (!m) console.error(`[WARN] VTT2SRT: Unknown size: ${size}`);
+    if (!m) console.error(`[WARN] VTT2ASS: Unknown size: ${size}`);
     if (m[2] === 'em') m[1] *= fontSize;
     return Math.round(m[1]);
 }
