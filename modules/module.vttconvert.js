@@ -8,7 +8,7 @@ const cssPrefixRx = /\.rmp-container>\.rmp-content>\.rmp-cc-area>\.rmp-cc-contai
 // colors
 const colors = require('./module.colors');
 const defaultStyleName = 'Default';
-const defaultStyleFont = 'Open Sans Semibold';
+const defaultStyleFont = 'Arial';
 
 // predefined
 let relGroup = '';
@@ -19,7 +19,8 @@ let rFont    = '';
 function loadCSS(cssStr) {
     let css = cssStr;
     css = css.replace(cssPrefixRx, '').replace(/[\r\n]+/g, '\n').split('\n');
-    let defaultStyle = `${defaultStyleFont},${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`
+    let defaultSFont = rFont == '' ? defaultStyleFont : rFont;
+    let defaultStyle = `${defaultSFont},${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`
     let styles = { [defaultStyleName]: { params: defaultStyle, list: [] } };
     let classList = { [defaultStyleName]: 1 };
     for (let i in css) {
@@ -67,7 +68,7 @@ function parseStyle(line, style) {
             case 'color':
                 cl = getColor(st[1]);
                 if (cl !== null) {
-                    if (cl=='&H0000FFFF'){
+                    if (cl == '&H0000FFFF'){
                         style[2] = style[3] = '&H00FFFFFF';
                     }
                     else{
@@ -332,7 +333,7 @@ function toSubTime(str) {
 module.exports = (group, xFontSize, vttStr, cssStr, timeMargin, replaceFont) => {
     relGroup = group;
     fontSize = xFontSize > 0 ? xFontSize : 34; // 1em to pix
-    tmMrg    = timeMargin ? timeMargin : 0;
+    tmMrg    = timeMargin ? timeMargin : 0; // 
     rFont    = replaceFont ? replaceFont : rFont;
     return convert(
         loadCSS(cssStr),
