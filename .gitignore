@@ -3,8 +3,9 @@
 /modules/ffmpeg/
 /modules/mkvtoolnix/
 ffmpeg
-config.profile.yml
-config.session.yml
+*.profile.yml
+*.session.yml
+*.ios.yml
 package-lock.json
 requests-list.txt
 *.exe

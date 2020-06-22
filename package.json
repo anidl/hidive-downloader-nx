@@ -1,6 +1,6 @@
 {
     "name": "hidive-downloader-nx",
-    "version": "1.11.0",
+    "version": "2.0.0",
     "description": "Download videos from HIDIVE via cli.",
     "keywords": [
         "download",
@@ -10,7 +10,7 @@
         "utility",
         "cli"
     ],
-    "author": "Seiya Loveless",
+    "author": "AniDL",
     "homepage": "https://github.com/seiya-dev/hidive-downloader-nx",
     "repository": {
         "type": "git",
@@ -22,12 +22,16 @@
     "license": "MIT",
     "main": "hidive.js",
     "dependencies": {
-        "got": "^9.6.0",
-        "hls-download": "^2.1.4",
-        "m3u8-parsed": "^1.2.0",
-        "proxy-agent": "^3.1.0",
-        "sei-helper": "^3.2.0",
-        "yaml": "^1.6.0",
-        "yargs": "^13.3.0"
+        "got": "^11.3.0",
+        "hls-download": "^2.4.1",
+        "m3u8-parsed": "^1.3.0",
+        "sei-helper": "^3.3.0",
+        "yaml": "^1.10.0",
+        "yargs": "^15.3.1"
+    },
+    "scripts": {
+        "eslint": "eslint *.js modules",
+        "eslint-fix": "eslint *.js modules vtt2ass --fix",
+        "test": "echo \"Error: no test specified\" && exit 1"
     }
 }

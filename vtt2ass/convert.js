@@ -7,7 +7,7 @@ const yaml = require('../node_modules/yaml');
 
 // converter const
 const param = yaml.parse(
-    fs.readFileSync('params.yaml','utf8')
+    fs.readFileSync(__dirname + '/params.yaml','utf8')
 );
 
 // list files
@@ -29,7 +29,7 @@ for(const f of files){
     if( fs.existsSync(vttFile) && fs.existsSync(cssFile) ){
         const vttContent = fs.readFileSync(vttFile, 'utf8');
         const cssContent = fs.readFileSync(cssFile, 'utf8');
-        console.log(`[INFO] Converting: ${f} ...`)
+        console.log(`[INFO] Converting: ${f} ...`);
         const assContent = vtt(param.relTag, param.fontSize, vttContent, cssContent, param.timePad, param.rFont);
         fs.writeFileSync(assFile, assContent, 'utf8');
     }

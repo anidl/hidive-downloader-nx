@@ -11,18 +11,15 @@ const pkg = require('./package');
 // program name
 console.log(`\n=== HIDIVE Downloader NX ${pkg.version} ===\n`);
 const modulesFolder = path.join(__dirname,'modules');
+const configFolder = path.join(__dirname,'config');
 
 // modules extra
 const yaml    = require('yaml');
 const shlp    = require('sei-helper');
 const yargs   = require('yargs');
 
-// net requests
-const got     = require('got');
-const agent   = require('proxy-agent');
-const url     = require('url');
-
-// m3u8 and vtt
+// requests
+const got      = require('got');
 const m3u8     = require('m3u8-parsed');
 const streamdl = require('hls-download');
 const vtt      = require(modulesFolder+'/module.vttconvert');
@@ -32,9 +29,9 @@ const api      = require(modulesFolder+'/module.apiclient');
 const langCode = require(modulesFolder+'/module.langs');
 
 // config
-const configFile  = path.join(modulesFolder,'config.main.yml');
-const profileFile = path.join(modulesFolder,'config.profile.yml');
-const sessionFile = path.join(modulesFolder,'config.session.yml');
+const configFile  = path.join(configFolder,'config.main.yml');
+const profileFile = path.join(configFolder,'config.profile.yml');
+const sessionFile = path.join(configFolder,'config.session.yml');
 
 // client default
 let client = {
@@ -57,7 +54,7 @@ let cfg = {};
 
 // check configs
 if(!fs.existsSync(configFile)){
-    console.log(`[ERROR] config file not found!`);
+    console.log('[ERROR] config file not found!');
     process.exit();
 }
 else{
@@ -163,10 +160,10 @@ let fnTitle = '',
 
 // go to work folder
 try {
-    fs.accessSync(cfg.dir.content, fs.R_OK | fs.W_OK)
+    fs.accessSync(cfg.dir.content, fs.R_OK | fs.W_OK);
 } catch (e) {
     console.log(e);
-    console.log(`[ERROR] %s`,e.messsage);
+    console.log('[ERROR] %s',e.messsage);
     process.exit();
 }
 process.chdir(cfg.dir.content);
@@ -195,7 +192,7 @@ async function doInit(){
         client.ipAddress = JSON.parse(newIp.res.body).IPAddress;
     }
     if(!client.profile.deviceId){
-        const newDevice = await reqData('InitDevice', {"DeviceName":api.devName});
+        const newDevice = await reqData('InitDevice', {'DeviceName': api.devName});
         if(!newDevice.ok){return false;}
         client.profile = Object.assign(client.profile,{
             deviceId: JSON.parse(newDevice.res.body).Data.DeviceId,
@@ -214,10 +211,10 @@ async function doInit(){
 async function doAuth(){
     const aInit = await doInit();
     if(!aInit){return;}
-    console.log(`[INFO] Authentication`);
-    const iLogin = await shlp.question(`[Q] LOGIN/EMAIL`);
-    const iPsswd = await shlp.question(`[Q] PASSWORD   `);
-    const auth = await reqData('Authenticate', {"Email":iLogin,"Password":iPsswd});
+    console.log('[INFO] Authentication');
+    const iLogin = await shlp.question('[Q] LOGIN/EMAIL');
+    const iPsswd = await shlp.question('[Q] PASSWORD   ');
+    const auth = await reqData('Authenticate', {'Email':iLogin,'Password':iPsswd});
     if(!auth.ok){return;}
     const authData = JSON.parse(auth.res.body).Data;
     client.profile = Object.assign(client.profile, {
@@ -225,7 +222,7 @@ async function doAuth(){
         profileId: authData.Profiles[0].Id,
     });
     fs.writeFileSync(profileFile,yaml.stringify(client.profile));
-    console.log(`[INFO] Auth complete!`);
+    console.log('[INFO] Auth complete!');
     console.log(`[INFO] Service level for "${iLogin}" is ${authData.User.ServiceLevel}`);
 }
 
@@ -233,17 +230,17 @@ async function doAuth(){
 async function doSearch(){
     const aInit = await doInit();
     if(!aInit){return;}
-    const searchItems = await reqData('Search', {"Query":argv.search});
+    const searchItems = await reqData('Search', {'Query':argv.search});
     if(!searchItems.ok){return;}
     const sItems = JSON.parse(searchItems.res.body).Data.TitleResults;
     if(sItems.length>0){
-         console.log(`[INFO] Search Results:`);
+        console.log('[INFO] Search Results:');
         for(let i=0;i<sItems.length;i++){
             console.log(`[#${sItems[i].Id}] ${sItems[i].Name} [${sItems[i].ShowInfoTitle}]`);
         }
     }
     else{
-        console.log(`[ERROR] Nothing found!`);
+        console.log('[ERROR] Nothing found!');
     }
 }
 
@@ -251,7 +248,7 @@ async function doSearch(){
 async function getShow(){
     const aInit = await doInit();
     if(!aInit){return;}
-    const getShowData = await reqData('GetTitle', {"Id":argv.s});
+    const getShowData = await reqData('GetTitle', {'Id':argv.s});
     if(!getShowData.ok){return;}
     const showData = JSON.parse(getShowData.res.body).Data.Title;
     // console.log(yaml.stringify(showData));
@@ -308,15 +305,15 @@ async function getShow(){
             nameLong = epKey;
         }
         let sumDub = showData.Episodes[i].Summary.match(/^Audio: (.*)/m);
-        sumDub = sumDub ? `\n - ${sumDub[0]}` : ``;
+        sumDub = sumDub ? `\n - ${sumDub[0]}` : '';
         let sumSub = showData.Episodes[i].Summary.match(/^Subtitles: (.*)/m);
-        sumSub = sumSub ? `\n - ${sumSub[0]}` : ``;
+        sumSub = sumSub ? `\n - ${sumSub[0]}` : '';
         let selMark = '';
         if(selEpsInp.includes(epKey) || !epKey.match(/e(\d+)$/) && selEpsInp.includes(nameLong)){
             selEpsArr.push({titleId,epKey,nameLong});
             selMark = ' (selected)';
         }
-        let epKeyTitle   = !epKey.match(/e(\d+)$/) ? nameLong : epKey
+        let epKeyTitle   = !epKey.match(/e(\d+)$/) ? nameLong : epKey;
         let titleIdStr = ( titleId != argv.s ? `#${titleId}|` : '' ) + epKeyTitle;
         console.log(`[${titleIdStr}] ${showData.Episodes[i].Name}${selMark}${sumDub}${sumSub}`);
     }
@@ -324,7 +321,7 @@ async function getShow(){
     // select episodes
     if(selEpsArr.length>0){
         for(let s=0;s<selEpsArr.length;s++){
-            let getVideoData = await reqData('GetVideos', {"VideoKey":selEpsArr[s].epKey,"TitleId":selEpsArr[s].titleId});
+            let getVideoData = await reqData('GetVideos', {'VideoKey':selEpsArr[s].epKey,'TitleId':selEpsArr[s].titleId});
             if(getVideoData.ok){
                 let videoData = JSON.parse(getVideoData.res.body);
                 let ssNum = selEpsArr[s].epKey.match(/^s(\d+)/) ? parseInt(selEpsArr[s].epKey.match(/^s(\d+)/)[1]) : 1;
@@ -337,16 +334,16 @@ async function getShow(){
                 // --
                 let videoList = videoData.Data.VideoLanguages;
                 let subsList  = videoData.Data.CaptionLanguages;
-                console.log(`[INFO] Available dubs and subtitles:`);
-                console.log(`\tVideos: `+videoList.join('\n\t\t'));
-                console.log(`\tSubs  : `+subsList.join('\n\t\t'));
+                console.log('[INFO] Available dubs and subtitles:');
+                console.log('\tVideos: '+videoList.join('\n\t\t'));
+                console.log('\tSubs  : '+subsList.join('\n\t\t'));
                 console.log(`[INFO] Selected dub: ${langCode[argv.dub]}`);
-                let videoUrls = videoData.Data.VideoUrls, videoUrl  = ``;
+                let videoUrls = videoData.Data.VideoUrls, videoUrl  = '';
                 let subsUrls  = videoData.Data.CaptionVttUrls;
                 fontSize = videoData.Data.FontSize ? videoData.Data.FontSize : fontSize;
                 let videoSel  = videoList.filter( v => v.match(langCode[argv.dub]) );
                 if(videoSel.length===0){
-                    console.log(`[ERROR] Selected dub not found!\n`);
+                    console.log('[ERROR] Selected dub not found!\n');
                 }
                 else if(videoSel.length===1){
                     videoUrl = videoUrls[videoSel[0]].hls[0];
@@ -356,12 +353,12 @@ async function getShow(){
                 else if(videoSel.length===2){
                     if(argv.br){
                         videoUrl = videoUrls[videoSel.filter(v=>v.match(/Broadcast/))[0]].hls[0];
-                        console.log(`[INFO] Selected release: Broadcast`);
+                        console.log('[INFO] Selected release: Broadcast');
                         await downloadMedia(videoUrl,subsUrls,videoData.Data.FontSize);
                     }
                     else{
                         videoUrl = videoUrls[videoSel.filter(v=>v.match(/Home Video/))[0]].hls[0];
-                        console.log(`[INFO] Selected release: Home Video`);
+                        console.log('[INFO] Selected release: Home Video');
                         await downloadMedia(videoUrl,subsUrls,videoData.Data.FontSize);
                     }
                 }
@@ -369,7 +366,7 @@ async function getShow(){
         }
     }
     else{
-        console.log(`[INFO] Episodes not selected!`);
+        console.log('[INFO] Episodes not selected!');
     }
 }
 
@@ -378,7 +375,8 @@ async function getStream(data){
         return { ok: true };
     }
     else{
-        return await streamdl(data);
+        data.fn = data.fn + '.ts';
+        return await new streamdl(data).download();
     }
 }
 
@@ -386,19 +384,18 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
     let getVideoQualities = await getData(videoUrl);
     if(!getVideoQualities.ok){return;}
     let s = m3u8(getVideoQualities.res.body).playlists;
-    let pls = {};
-    console.log(`[INFO] Available qualities:`);
+    console.log('[INFO] Available qualities:');
     for(let i=0;i<s.length;i++){
         let qs = s[i].attributes.RESOLUTION.height+'p';
         let qb = Math.round(s[i].attributes.BANDWIDTH/1024);
-        console.log(`\t${qs} @ ${qb}kbps`+(qs==argv.q?` (selected)`:``));
+        console.log(`\t${qs} @ ${qb}kbps`+(qs==argv.q?' (selected)':''));
         if(qs==argv.q){
             tsDlPath = s[i].uri;
         }
     }
     console.log();
     if(!tsDlPath){
-        console.log(`\n[ERROR] Selected video quality not found!\n`)
+        console.log('\n[ERROR] Selected video quality not found!\n');
     }
     else{
         // video download
@@ -419,27 +416,28 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
         let proxyHLS;
         if(argv.proxy && !argv.ssp){
             try{
-                proxyHLS.url = buildProxyUrl(argv.proxy,argv['proxy-auth']);
+                // proxyHLS.url = buildProxyUrl(argv.proxy,argv['proxy-auth']);
             }
             catch(e){}
         }
-        let dldata = await getStream({
+        let streamdlParams = {
             fn: fnOutput,
             m3u8json: chunkList,
             baseurl: chunkList.baseUrl,
             pcount: 10,
-            proxy: (proxyHLS?proxyHLS:false)
-        });
+            proxy: (proxyHLS ? proxyHLS : false)
+        };
+        let dldata = await getStream(streamdlParams);
         if(!dldata.ok){
             console.log(`[ERROR] ${dldata.err}\n`);
             return;
         }
         if(argv.skipdl){
-            console.log(`[INFO] Video download skiped!\n`);
+            console.log('[INFO] Video download skiped!\n');
             argv.nosubs = false;
         }
         else{
-            console.log(`[INFO] Video downloaded!\n`);
+            console.log('[INFO] Video downloaded!\n');
         }
         // stag
         argv.stag = argv.stag ? argv.stag : argv.a;
@@ -452,7 +450,7 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
             for(let z=0; z<subsLangArr.length; z++){
                 let vttStr = '', cssStr = '', assStr = '', assExt = 'ass';
                 let subs4XUrl = subsUrls[subsLangArr[z]].split('/');
-                subsXUrl = subs4XUrl[subs4XUrl.length-1].replace(/.vtt$/,'');
+                let subsXUrl = subs4XUrl[subs4XUrl.length-1].replace(/.vtt$/,'');
                 let getCssContent = await getData(genSubsUrl('css', subsXUrl));
                 let getVttContent = await getData(genSubsUrl('vtt', subsXUrl));
                 if(getCssContent.ok && getVttContent.ok){
@@ -481,7 +479,7 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
 }
 
 function getLangCode(lang){
-    for (k in langCode) {
+    for (let k in langCode) {
         let r = new RegExp(langCode[k], 'i');
         if (r.test(lang)) {
             return k.match(/-/) ? k.split('-')[0] : k;
@@ -506,38 +504,38 @@ async function muxStreams(){
     argv.ftag = argv.ftag ? argv.ftag : argv.a;
     argv.ftag = shlp.cleanupFilename(argv.ftag); 
     // check exec
-    if( !argv.mp4 && !isFile(cfg.bin.mkvmerge) && !isFile(cfg.bin.mkvmerge+`.exe`) ){
-        console.log(`[WARN] MKVMerge not found, skip using this...`);
+    if( !argv.mp4 && !isFile(cfg.bin.mkvmerge) && !isFile(cfg.bin.mkvmerge+'.exe') ){
+        console.log('[WARN] MKVMerge not found, skip using this...');
         cfg.bin.mkvmerge = false;
     }
-    if( !isFile(cfg.bin.ffmpeg) && !isFile(cfg.bin.ffmpeg+`.exe`) ){
-        console.log((cfg.bin.mkvmerge?`\n`:``)+`[WARN] FFmpeg not found, skip using this...`);
+    if( !isFile(cfg.bin.ffmpeg) && !isFile(cfg.bin.ffmpeg+'.exe') ){
+        console.log((cfg.bin.mkvmerge?'\n':'')+'[WARN] FFmpeg not found, skip using this...');
         cfg.bin.ffmpeg = false;
     }
     // mux to mkv
     if(!argv.mp4 && cfg.bin.mkvmerge){
         let mkvmux  = [];
         // defaults
-        mkvmux.push(`--output`,`${fnOutput}.mkv`);
-        mkvmux.push(`--disable-track-statistics-tags`,`--engage`,`no_variable_data`);
+        mkvmux.push('--output',`${fnOutput}.mkv`);
+        mkvmux.push('--disable-track-statistics-tags','--engage','no_variable_data');
         // video
-        mkvmux.push(`--track-name`,`1:[${argv.ftag}]`);
-        mkvmux.push(`--language`,`0:${argv.dub}`);
-        mkvmux.push(`--video-tracks`,`1`,`--audio-tracks`,`0`);
-        mkvmux.push(`--no-subtitles`,`--no-attachments`);
+        mkvmux.push('--track-name',`1:[${argv.ftag}]`);
+        mkvmux.push('--language',`0:${argv.dub}`);
+        mkvmux.push('--video-tracks','1','--audio-tracks','0');
+        mkvmux.push('--no-subtitles','--no-attachments');
         mkvmux.push(`${fnOutput}.ts`);
         // subtitles
         if(addSubs){
             for(let t in sxList){
                 if(capsOpt(sxList[t].isCaps)){
-                    mkvmux.push(`--track-name`,`0:${sxList[t].language}`);
-                    mkvmux.push(`--language`,`0:${sxList[t].langCode}`);
+                    mkvmux.push('--track-name',`0:${sxList[t].language}`);
+                    mkvmux.push('--language',`0:${sxList[t].langCode}`);
                     mkvmux.push(`${sxList[t].file}`);
                 }
             }
         }
         fs.writeFileSync(`${fnOutput}.json`,JSON.stringify(mkvmux,null,'  '));
-        shlp.exec(`mkvmerge`,`"${cfg.bin.mkvmerge}"`,`@"${fnOutput}.json"`);
+        shlp.exec('mkvmerge',`"${cfg.bin.mkvmerge}"`,`@"${fnOutput}.json"`);
         fs.unlinkSync(`${fnOutput}.json`);
     }
     else if(cfg.bin.ffmpeg){
@@ -545,30 +543,30 @@ async function muxStreams(){
         if(addSubs){
             for(let t in sxList){
                 if(capsOpt(sxList[t].isCaps)){
-                    ffsubs.fsubs += `-i "${sxList[t].file}" `
+                    ffsubs.fsubs += `-i "${sxList[t].file}" `;
                     ffsubs.meta1 += `-map ${(parseInt(t)+1)} -c:s copy `;
                     ffsubs.meta2 += `-metadata:s:s:${(t)} title="${sxList[t].language}" -metadata:s:s:${(t)} language=${sxList[t].langCode} `;
                 }
             }
         }
-        let ffext = !argv.mp4 ? `mkv` : `mp4`;
+        let ffext = !argv.mp4 ? 'mkv' : 'mp4';
         let ffmux = `-i "${fnOutput}.ts" `;
-            ffmux += ffsubs.fsubs;
-            ffmux += `-map 0 -c:v copy -c:a copy `;
-            ffmux += ffsubs.meta1;
-            ffmux += `-metadata encoding_tool="no_variable_data" `;
-            ffmux += `-metadata:s:v:0 title="[${argv.ftag}]" -metadata:s:a:0 language=${argv.dub} `;
-            ffmux += ffsubs.meta2;
-            ffmux += `"${fnOutput}.${ffext}"`;
+        ffmux += ffsubs.fsubs;
+        ffmux += '-map 0 -c:v copy -c:a copy ';
+        ffmux += ffsubs.meta1;
+        ffmux += '-metadata encoding_tool="no_variable_data" ';
+        ffmux += `-metadata:s:v:0 title="[${argv.ftag}]" -metadata:s:a:0 language=${argv.dub} `;
+        ffmux += ffsubs.meta2;
+        ffmux += `"${fnOutput}.${ffext}"`;
         // mux to mkv
-        try{ shlp.exec(`ffmpeg`,`"${cfg.bin.ffmpeg}"`,ffmux); }catch(e){}
+        try{ shlp.exec('ffmpeg',`"${cfg.bin.ffmpeg}"`,ffmux); }catch(e){}
     }
     else{
-        console.log(`\n[INFO] Done!\n`);
+        console.log('\n[INFO] Done!\n');
         return;
     }
     if(argv.nocleanup){
-        fs.renameSync(fnOutput+`.ts`, path.join(cfg.dir.trash,`/${fnOutput}.ts`));
+        fs.renameSync(fnOutput+'.ts', path.join(cfg.dir.trash,`/${fnOutput}.ts`));
         if(addSubs){
             for(let t in sxList){
                 fs.renameSync(sxList[t].file, path.join(cfg.dir.trash,`/${sxList[t].file}`));
@@ -576,14 +574,14 @@ async function muxStreams(){
         }
     }
     else{
-        fs.unlinkSync(fnOutput+`.ts`);
+        fs.unlinkSync(fnOutput+'.ts');
         if(addSubs){
             for(let t in sxList){
                 fs.unlinkSync(sxList[t].file);
             }
         }
     }
-    console.log(`\n[INFO] Done!\n`);
+    console.log('\n[INFO] Done!\n');
 }
 
 function capsOpt(isCaps){
@@ -619,7 +617,7 @@ function generateNonce(){
 }
 
 // Generate Signature
-function generateSignature(body,visitId,profile){
+function generateSignature(body, visitId, profile){
     const sigCleanStr = [
         client.ipAddress,
         api.appId,
@@ -653,29 +651,19 @@ async function reqData(method, body, type){
         options.body      = body == '' ? body : JSON.stringify(body);
         // set api headers
         if(method != 'Ping'){
+            let visitId = client.visitId ? client.visitId : '';
+            let vprofile = {
+                userId: client.profile.userId || 0,
+                profileId: client.profile.profileId || 0,
+                deviceId: client.profile.deviceId || '',
+            };
             client.xNonce     = generateNonce();
-            if(method == 'InitVisit'){
-                client.xSignature = generateSignature(options.body,'',{
-                    deviceId:  client.profile.deviceId,
-                    userId:    0,
-                    profileId: 0
-                });
-                options.headers = Object.assign(options.headers, {
-                    'X-VisitId'      : '',
-                    'X-UserId'       : 0,
-                    'X-ProfileId'    : 0,
-                });
-            }
-            else{
-                client.xSignature = generateSignature(options.body,client.visitId,client.profile);
-                options.headers = Object.assign(options.headers, {
-                    'X-VisitId'      : client.visitId,
-                    'X-UserId'       : client.profile.userId,
-                    'X-ProfileId'    : client.profile.profileId,
-                });
-            }
+            client.xSignature = generateSignature(options.body, visitId, vprofile);
             options.headers = Object.assign(options.headers, {
-                'X-DeviceId'     : client.profile.deviceId,
+                'X-VisitId'      : visitId,
+                'X-UserId'       : vprofile.userId,
+                'X-ProfileId'    : vprofile.profileId,
+                'X-DeviceId'     : vprofile.deviceId,
                 'X-Nonce'        : client.xNonce,
                 'X-Signature'    : client.xSignature,
             });
@@ -686,10 +674,8 @@ async function reqData(method, body, type){
         }, options.headers);
         // cookies
         let cookiesList    = Object.keys(session);
-        if(cookiesList.length > 0){
-            if(method == 'Ping'){
-                options.headers.Cookie = shlp.cookie.make(session,cookiesList);
-            }
+        if(cookiesList.length > 0 && method != 'Ping'){
+            options.headers.Cookie = shlp.cookie.make(session,cookiesList);
         }
     }
     else if(isGet && !options.url.match(/\?/)){
@@ -709,6 +695,7 @@ async function reqData(method, body, type){
     let useProxy = isGet && argv.ssp && options.url.match(/\.m3u8/) ? false : true;
     // set proxy
     if(useProxy && argv.proxy){
+        /*
         try{
             let proxyUrl = buildProxyUrl(argv.proxy,argv['proxy-auth']);
             options.agent = new ProxyAgent(proxyUrl);
@@ -718,32 +705,29 @@ async function reqData(method, body, type){
             console.log(`[WARN] Not valid proxy URL${e.input?' ('+e.input+')':''}!`);
             console.log(`[WARN] Skiping...\n`);
         }
+        */
     }
     try{
         if(argv.debug){
-            console.log(`[DEBUG] Request params:`);
+            console.log('[DEBUG] Request params:');
             console.log(options);
         }
         let res = await got(options);
         if(!isGet && res.headers && res.headers['set-cookie']){
             const newReqCookies = shlp.cookie.parse(res.headers['set-cookie']);
-            delete newReqCookies['.AspNet.ApplicationCookie'];
-            delete newReqCookies['.AspNet.ExternalCookie'];
             session = Object.assign(session, newReqCookies);
-            if(session.VisitId || session.UserStatus || session.Visitor){
-                fs.writeFileSync(sessionFile,yaml.stringify(session));
-            }
+            fs.writeFileSync(sessionFile,yaml.stringify(session));
         }
         if(!isGet){
             const resJ = JSON.parse(res.body);
             if(resJ.Code > 0){
                 console.log(`[ERROR] Code ${resJ.Code} (${resJ.Status}): ${resJ.Message}\n`);
                 if(resJ.Code == 81 || resJ.Code == 5){
-                    console.log(`[NOTE] App was broken because of changes in official app.`);
-                    console.log(`[NOTE] See: https://github.com/seiya-dev/hidive-downloader-nx/issues/14\n`);
+                    console.log('[NOTE] App was broken because of changes in official app.');
+                    console.log('[NOTE] See: https://github.com/anidl/hidive-downloader-nx/issues/1\n');
                 }
                 if(resJ.Code == 55){
-                    console.log(`[NOTE] You need premium account to view this video.`);
+                    console.log('[NOTE] You need premium account to view this video.');
                 }
                 return {
                     ok: false,
@@ -771,6 +755,7 @@ async function reqData(method, body, type){
 }
 
 // make proxy url
+/*
 function buildProxyUrl(proxyBaseUrl,proxyAuth){
     let proxyCfg = new URL(proxyBaseUrl);
     if(!proxyCfg.hostname || !proxyCfg.port){
@@ -787,3 +772,4 @@ function buildProxyUrl(proxyBaseUrl,proxyAuth){
         port: proxyCfg.port,
     });
 }
+*/

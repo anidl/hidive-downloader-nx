@@ -1,12 +1,8 @@
-// modules
-const fs = require('fs');
-const path = require('path');
-
 // const
 const cssPrefixRx = /\.rmp-container>\.rmp-content>\.rmp-cc-area>\.rmp-cc-container>\.rmp-cc-display>\.rmp-cc-cue /g;
 
 // colors
-const colors = require('./module.colors');
+const colors = require(__dirname + '/module.colors');
 const defaultStyleName = 'Default';
 const defaultStyleFont = 'Arial';
 
@@ -20,7 +16,7 @@ function loadCSS(cssStr) {
     let css = cssStr;
     css = css.replace(cssPrefixRx, '').replace(/[\r\n]+/g, '\n').split('\n');
     let defaultSFont = rFont == '' ? defaultStyleFont : rFont;
-    let defaultStyle = `${defaultSFont},${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`
+    let defaultStyle = `${defaultSFont},${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`;
     let styles = { [defaultStyleName]: { params: defaultStyle, list: [] } };
     let classList = { [defaultStyleName]: 1 };
     for (let i in css) {
@@ -39,7 +35,7 @@ function loadCSS(cssStr) {
             clz = clx[0].replace(/-C(\d+)_(\d+)$/i,'').replace(/-(\d+)$/i,'');
             classList[clz] = (classList[clz] || 0) + 1;
             rgx = classList[clz];
-            classSubNum = rgx > 1 ? `-${rgx}` : '';
+            let classSubNum = rgx > 1 ? `-${rgx}` : '';
             clzx = clz + classSubNum;
             styles[clzx] = { params: style, list: clx };
         }
@@ -95,7 +91,7 @@ function parseStyle(line, style) {
                 }
             case 'text-shadow':
                 st[1] = st[1].split(',').map(r => r.trim());
-                st[1] = st[1].map(r => { return ( r.split(' ').length > 3 ? r.replace(/(\d+)px black$/,'') : r.replace(/black$/,'') ).trim() });
+                st[1] = st[1].map(r => { return ( r.split(' ').length > 3 ? r.replace(/(\d+)px black$/,'') : r.replace(/black$/,'') ).trim(); });
                 st[1] = st[1].map(r => r.replace(/-/g,'').replace(/px/g,'').replace(/(^| )0( |$)/g,' ').trim()).join(' ');
                 st[1] = st[1].split(' ');
                 if(st[1].length != 10){
@@ -278,7 +274,7 @@ function convertLine(css, l) {
         txt.text = `{\\pos(640,${parseFloat(PosY.toFixed(3))})}${txt.text}`;
     }
     else {
-        indregx = txt.style.match(/(.*)_(\d+)$/);
+        let indregx = txt.style.match(/(.*)_(\d+)$/);
         if(indregx !== null){
             ind    = indregx[1];
             subInd = parseInt(indregx[2]);
@@ -296,7 +292,7 @@ function convertText(text) {
         style = m[1];
         text = m[2];
     }
-    xtext = text
+    let xtext = text
         .replace(/\n/g, '\\N')
         .replace(/ \\N$/g, '\\N')
         .replace(/<b[^>]*>([^<]*)<\/b>/g, '{\\b1}$1{\\b0}')
@@ -317,7 +313,7 @@ function convertTime(tm) {
 }
 
 function toSubTime(str) {
-    let n = [], x, sx, s;
+    let n = [], x, sx;
     x = str.split(/[:.]/).map(x => Number(x));
     x[3] = '0.'+('00'+x[3]).slice(-3);
     sx = (x[0]*60*60 + x[1]*60 + x[2] + Number(x[3]) - tmMrg).toFixed(2);
