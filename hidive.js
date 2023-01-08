@@ -29,9 +29,9 @@ const api      = require(modulesFolder+'/module.apiclient');
 const langCode = require(modulesFolder+'/module.langs');
 
 // config
-const configFile  = path.join(configFolder,'config.main.yml');
-const profileFile = path.join(configFolder,'config.profile.yml');
-const sessionFile = path.join(configFolder,'config.session.yml');
+const configFile  = path.join(configFolder, 'config.main.yml');
+const profileFile = path.join(configFolder, 'config.profile.yml');
+const sessionFile = path.join(configFolder, 'config.session.yml');
 
 // client default
 let client = {
@@ -60,7 +60,7 @@ if(!fs.existsSync(configFile)){
 else{
     cfg = yaml.parse(
         fs.readFileSync(configFile, 'utf8')
-            .replace(/\${__dirname}/g,__dirname.replace(/\\/g,'/'))
+            .replace(/\${__dirname}/g, __dirname.replace(/\\/g,'/'))
     );
 }
 
@@ -388,7 +388,7 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
     for(let i=0;i<s.length;i++){
         let qs = s[i].attributes.RESOLUTION.height+'p';
         let qb = Math.round(s[i].attributes.BANDWIDTH/1024);
-        console.log(`\t${qs} @ ${qb}kbps`+(qs==argv.q?' (selected)':''));
+        console.log(`\t${qs} @ ${qb}kbps`+(qs == argv.q?' (selected)':''));
         if(qs==argv.q){
             tsDlPath = s[i].uri;
         }
@@ -433,7 +433,7 @@ async function downloadMedia(videoUrl,subsUrls,fontSize){
             return;
         }
         if(argv.skipdl){
-            console.log('[INFO] Video download skiped!\n');
+            console.log('[INFO] Video download skipped!\n');
             argv.nosubs = false;
         }
         else{

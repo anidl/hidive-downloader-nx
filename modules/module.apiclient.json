@@ -1,7 +1,7 @@
 {
     "wwwhost"  : "https://www.hidive.com",
     "apihost"  : "https://api.hidive.com",
-    "apikey"   : "ee32bb768db4ac42fc1d0fcdafb11facb3a8a93a",
+    "apikey"   : "508efd7b42d546e19cc24f4d0b414e57e351ca73",
     "devName"  : "Android",
     "appId"    : "24i-Android",
     "clientWeb": "okhttp/3.4.1",

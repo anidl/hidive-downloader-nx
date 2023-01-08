@@ -2,7 +2,7 @@
 const cssPrefixRx = /\.rmp-container>\.rmp-content>\.rmp-cc-area>\.rmp-cc-container>\.rmp-cc-display>\.rmp-cc-cue /g;
 
 // colors
-const colors = require(__dirname + '/module.colors');
+const colors = require('./module.colors');
 const defaultStyleName = 'Default';
 const defaultStyleFont = 'Arial';
 
@@ -16,7 +16,7 @@ function loadCSS(cssStr) {
     let css = cssStr;
     css = css.replace(cssPrefixRx, '').replace(/[\r\n]+/g, '\n').split('\n');
     let defaultSFont = rFont == '' ? defaultStyleFont : rFont;
-    let defaultStyle = `${defaultSFont},${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`;
+    let defaultStyle = `${defaultSFont},40,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,20,20,20,1`; //base for nonDialog
     let styles = { [defaultStyleName]: { params: defaultStyle, list: [] } };
     let classList = { [defaultStyleName]: 1 };
     for (let i in css) {
@@ -25,25 +25,47 @@ function loadCSS(cssStr) {
         if (l === '') continue;
         let m = l.match(/^(.*)\{(.*)\}$/);
         if (!m) console.error(`[WARN] VTT2ASS: Invalid css in line ${i}: ${l}`);
-        let style = parseStyle(m[2], defaultStyle);
-        if (m[1] === '') {
+        // console.log("m");
+        // console.log(m);
+        // console.log("");
+        
+        if (m[1] === '') { //updates default style, which is then used as a base for other styles
+            let style = parseStyle(defaultStyleName, m[2], defaultStyle);
+            // console.log("Result style");
+            // console.log(style);
             styles[defaultStyleName].params = style;
             defaultStyle = style;
         }
         else {
+			
             clx = m[1].replace(/\./g, '').split(',');
             clz = clx[0].replace(/-C(\d+)_(\d+)$/i,'').replace(/-(\d+)$/i,'');
             classList[clz] = (classList[clz] || 0) + 1;
             rgx = classList[clz];
             let classSubNum = rgx > 1 ? `-${rgx}` : '';
             clzx = clz + classSubNum;
+			
+            let style = parseStyle(clzx, m[2], defaultStyle);
+            // console.log("Result style");
+            // console.log(style);
             styles[clzx] = { params: style, list: clx };
         }
     }
+    //console.log(styles);
     return styles;
 }
 
-function parseStyle(line, style) {
+function parseStyle(stylegroup, line, style) {
+    // console.log("Parse Style call: " + stylegroup);
+    // console.log(line);
+    // console.log(style);
+	
+    let defaultSFont = rFont == '' ? defaultStyleFont : rFont; //redeclare cause of let
+	
+    if (stylegroup.startsWith('Subtitle') || stylegroup.startsWith('Song')) { //base for dialog, everything else use defaultStyle
+        style = `${defaultSFont},${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2.6,0,2,20,20,46,1`;
+    }
+	
     // Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
     // BackColour, Bold, Italic, Underline, StrikeOut,
     // ScaleX, ScaleY, Spacing, Angle, BorderStyle,
@@ -56,10 +78,18 @@ function parseStyle(line, style) {
         let cl;
         switch (st[0]) {
             case 'font-family':
-                style[0] = rFont == '' ? st[1].match(/[\s"]*([^",]*)/)[1] : rFont;
+                if (rFont != '') { //do rewrite if rFont is specified
+                    if (stylegroup.startsWith('Subtitle') || stylegroup.startsWith('Song')) {
+                        style[0] = rFont; //dialog to rFont
+                    } else {
+                        style[0] = defaultStyleFont; //non-dialog to Arial
+                    }
+                } else { //otherwise keep default style
+                    style[0] = st[1].match(/[\s"]*([^",]*)/)[1];
+                }
                 break;
             case 'font-size':
-                style[1] = getPxSize(st[1]);
+                style[1] = getPxSize(st[1], style[1]); //scale it based on input style size... so for dialog, this is the dialog font size set in config, for non dialog, it's 40 from default font size
                 break;
             case 'color':
                 cl = getColor(st[1]);
@@ -73,6 +103,11 @@ function parseStyle(line, style) {
                 }
                 break;
             case 'font-weight':
+                if (stylegroup.startsWith('Subtitle') || stylegroup.startsWith('Song')) { //don't touch font-weight if dialog
+                    break;
+                }
+                // console.log("Changing bold weight");
+                // console.log(stylegroup);
                 if (st[1] === 'bold') {
                     style[6] = -1;
                     break;
@@ -90,6 +125,9 @@ function parseStyle(line, style) {
                     break;
                 }
             case 'text-shadow':
+                if (stylegroup.startsWith('Subtitle') || stylegroup.startsWith('Song')) { //don't touch shadow if dialog
+                    break;
+                }
                 st[1] = st[1].split(',').map(r => r.trim());
                 st[1] = st[1].map(r => { return ( r.split(' ').length > 3 ? r.replace(/(\d+)px black$/,'') : r.replace(/black$/,'') ).trim(); });
                 st[1] = st[1].map(r => r.replace(/-/g,'').replace(/px/g,'').replace(/(^| )0( |$)/g,' ').trim()).join(' ');
@@ -112,10 +150,10 @@ function parseStyle(line, style) {
     return style.join(',');
 }
 
-function getPxSize(size) {
-    let m = size.trim().match(/([\d.]+)(.*)/);
-    if (!m) console.error(`[WARN] VTT2ASS: Unknown size: ${size}`);
-    if (m[2] === 'em') m[1] *= fontSize;
+function getPxSize(size_line, font_size) {
+    let m = size_line.trim().match(/([\d.]+)(.*)/);
+    if (!m) console.error(`[WARN] VTT2ASS: Unknown size: ${size_line}`);
+    if (m[2] === 'em') m[1] *= font_size;
     return Math.round(m[1]);
 }
 
@@ -225,25 +263,25 @@ function convert(css, vtt) {
     }
     if(events.subtitle.length>0){
         ass = ass.concat(
-            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Subtitles **`,
+            //`Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Subtitles **`,
             events.subtitle
         );
     }
     if(events.caption.length>0){
         ass = ass.concat(
-            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Captions **`,
+            //`Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Captions **`,
             events.caption
         );
     }
     if(events.capt_pos.length>0){
         ass = ass.concat(
-            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Captions with position **`,
+            //`Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Captions with position **`,
             events.capt_pos
         );
     }
     if(events.song_cap.length>0){
         ass = ass.concat(
-            `Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Song captions **`,
+            //`Comment: 0,0:00:00.00,0:00:00.00,${defaultStyleName},,0,0,0,,** Song captions **`,
             events.song_cap
         );
     }

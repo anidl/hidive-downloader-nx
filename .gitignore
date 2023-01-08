@@ -2,6 +2,7 @@
 /node_modules/
 /modules/ffmpeg/
 /modules/mkvtoolnix/
+.yarn
 ffmpeg
 *.profile.yml
 *.session.yml
