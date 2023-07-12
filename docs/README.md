@@ -1,3 +1,7 @@
+# Migrated into Multi-Downloader-NX
+
+This downloader has been rewritten and migrated into Multi-Downloader-NX: https://github.com/anidl/multi-downloader-nx
+
 # HIDIVE Downloader NX
 
 HIDIVE Downloader NX is capable of downloading videos from the *HIDIVE* streaming service.
